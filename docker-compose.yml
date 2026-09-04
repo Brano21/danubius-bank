@@ -54,11 +54,33 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
-    ports:
-      - "8080:8080"
+    # web is no longer published directly - it is reachable only via the gate.
+    expose:
+      - "8080"
     networks:
       - default
       - exporter_isolated
+
+  # Secure access gate + operator dashboard. The ONLY published service.
+  # Players authenticate here; every request is proxied to `web` and logged with
+  # the player's real identity. Gate + logs live OUTSIDE the vulnerable app (own
+  # SQLite DB), so nothing in the target can reach or tamper with the monitoring.
+  gate:
+    build: ./gate
+    environment:
+      UPSTREAM_URL: http://web:8080
+      GATE_SECRET: ${GATE_SECRET:-change-me-gate-secret}
+      GATE_ADMIN_USER: ${GATE_ADMIN_USER:-admin}
+      GATE_ADMIN_PASSWORD: ${GATE_ADMIN_PASSWORD:-change-me-admin}
+      GATE_DB: /data/gate.db
+      GATE_PLAYERS_FILE: /app/players.json
+    volumes:
+      - gate_data:/data
+      - ./gate/players.json:/app/players.json:ro
+    ports:
+      - "8080:8000"
+    depends_on:
+      - web
 
   # W1-05 exporter: the ONLY container that yields a shell. Isolated on an
   # internal (no-egress) network with no route to db/ollama, cap_drop:ALL, and
@@ -91,3 +113,4 @@ networks:
 
 volumes:
   ollama_models:
+  gate_data:

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="5">
+  <title>Monitoring - Danubius CTF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{margin:0;background:#0d1b2a;color:#e6edf3;font-family:system-ui,Segoe UI,Arial,sans-serif}
+    header{background:#101f33;border-bottom:1px solid #24405e;padding:12px 20px;display:flex;
+           align-items:center;gap:16px;flex-wrap:wrap}
+    header h1{font-size:1.1rem;margin:0}
+    header .stat{color:#9fb3c8;font-size:.85rem}
+    header .sp{margin-left:auto}
+    header a{color:#7fb0e8;text-decoration:none;font-size:.85rem}
+    main{padding:18px 20px;max-width:1100px;margin:0 auto}
+    h2{font-size:.95rem;color:#9fb3c8;text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
+    .cards{display:flex;gap:10px;flex-wrap:wrap}
+    .pcard{background:#152a41;border:1px solid #24405e;border-radius:10px;padding:10px 14px;min-width:150px}
+    .pcard .n{font-weight:700}
+    .pcard .m{color:#9fb3c8;font-size:.8rem;margin-top:2px}
+    table{border-collapse:collapse;width:100%;font-size:.85rem;margin-top:6px}
+    th,td{border-bottom:1px solid #1e3350;padding:6px 8px;text-align:left;vertical-align:top}
+    th{color:#9fb3c8;font-weight:600;font-size:.75rem;text-transform:uppercase}
+    td.q{color:#c9d6e2;max-width:520px;word-break:break-all;font-family:ui-monospace,Consolas,monospace}
+    .m-POST{color:#ffd27f}.m-PATCH{color:#c79bff}.m-DELETE{color:#ff9aa2}.m-GET{color:#8fd39a}
+    .s2{color:#8fd39a}.s3{color:#7fb0e8}.s4{color:#ffd27f}.s5{color:#ff9aa2}
+    .empty{color:#9fb3c8;padding:14px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Danubius CTF &middot; monitoring</h1>
+    <span class="stat">{{ total }} requestov &middot; {{ summary|length }} aktivnych hracov &middot; {{ players|length }} uctov</span>
+    <span class="stat">auto-refresh 5s</span>
+    <span class="sp"></span>
+    <a href="/_gate/admin/logout">Odhlasit</a>
+  </header>
+  <main>
+    <h2>Hraci</h2>
+    <div class="cards">
+      {% for s in summary %}
+        <div class="pcard"><div class="n">{{ s.player }}</div>
+          <div class="m">{{ s.c }} requestov &middot; naposledy {{ s.last_time }}</div></div>
+      {% else %}
+        <div class="empty">Zatial ziadna aktivita.</div>
+      {% endfor %}
+    </div>
+
+    <h2>Posledne requesty</h2>
+    <table>
+      <tr><th>Cas</th><th>Hrac</th><th>IP</th><th>Metoda</th><th>Cesta</th><th>Query</th><th>Stav</th></tr>
+      {% for r in recent %}
+        <tr>
+          <td>{{ r.time }}</td>
+          <td>{{ r.player }}</td>
+          <td>{{ r.ip }}</td>
+          <td class="m-{{ r.method }}">{{ r.method }}</td>
+          <td>{{ r.path }}</td>
+          <td class="q">{{ r.query }}</td>
+          <td class="s{{ (r.status // 100) if r.status else 0 }}">{{ r.status }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="empty">Zatial ziadne requesty.</td></tr>
+      {% endfor %}
+    </table>
+  </main>
+</body>
+</html>

