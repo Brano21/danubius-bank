@@ -10,6 +10,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 
 from ...auth import login_user, logout_user, current_client, login_required
 from ...db import fetch_one
+from ...flags import get_flag
 
 bp = Blueprint("week1", __name__)
 
@@ -25,12 +26,19 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        # SCAFFOLD: safe & parameterized. W1-01 will replace this with a
-        # string-concatenated query that is injectable.
-        row = fetch_one(
-            "SELECT id FROM clients WHERE username = %s AND password = %s",
-            (username, password),
+        # VULN: W1-01 SQL injection (A05) - the login query is built by string
+        # concatenation, so input breaks out of the quotes. A payload in the
+        # username field, e.g.  ' OR '1'='1'--  , comments out the password
+        # check and matches the first row (client id 1). No parameterization,
+        # so a WAF / front-end validation on password length does not help.
+        sql = (
+            "SELECT id FROM clients WHERE username = '"
+            + username
+            + "' AND password = '"
+            + password
+            + "'"
         )
+        row = fetch_one(sql)
         if row:
             login_user(row["id"])
             return redirect(url_for("week1.dashboard"))
@@ -41,7 +49,13 @@ def login():
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html", client=current_client())
+    client = current_client()
+    # The W1-01 flag is emitted by application logic (read from env, never from
+    # the DB) only on the FIRST client's dashboard - the account the login
+    # bypass lands on. A normal player has no credentials for it; the SQLi is
+    # the intended way in.
+    w1_01_flag = get_flag("W1-01") if client["id"] == 1 else None
+    return render_template("dashboard.html", client=client, w1_01_flag=w1_01_flag)
 
 
 @bp.route("/logout")
