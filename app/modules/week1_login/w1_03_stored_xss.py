@@ -22,7 +22,7 @@ the web to run as a single process with threads (see Dockerfile: gunicorn -w 1).
 import re
 import threading
 
-from flask import request, render_template
+from flask import request, render_template, redirect, url_for
 
 from . import bp
 from ...auth import login_required, current_client
@@ -120,3 +120,12 @@ def collect(token):
     with _captures_lock:
         items = list(_captures.get(token, []))
     return render_template("collect.html", token=token, items=items)
+
+
+@bp.route("/collector")
+def collector_home():
+    # Discoverable helper: type your token to jump to /w1-03/collect/<token>.
+    token = request.args.get("token", "").strip()
+    if token:
+        return redirect(url_for("week1.collect", token=token))
+    return render_template("collector_home.html")

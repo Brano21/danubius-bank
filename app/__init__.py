@@ -39,6 +39,9 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
-        return {"WEEK": week, "bank_name": "Danubius Bank"}
+        # `client` is made available to every template so the nav can render
+        # the right links on any page (returns None when not logged in).
+        from .auth import current_client
+        return {"WEEK": week, "bank_name": "Danubius Bank", "client": current_client()}
 
     return app

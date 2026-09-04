@@ -1,11 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
   <h1>Vitajte v Danubius Bank</h1>
-  <p>Fiktivny internetbanking. Toto je zamerne zranitelna treningova aplikacia (CTF).</p>
-  <p><a href="{{ url_for('week1.search') }}">Vyhladavanie na stranke</a></p>
+  <p class="muted">Fiktivny internetbanking. Vyberte funkciu alebo sa prihlaste do uctu.</p>
   {% if client %}
-    <p>Prihlaseny ako <strong>{{ client.full_name }}</strong>.</p>
-  {% else %}
-    <p><a href="{{ url_for('week1.login') }}">Prihlaste sa</a> do svojho uctu.</p>
+    <p>Prihlaseny ako <strong>{{ client.full_name }}</strong> ({{ client.username }}).</p>
   {% endif %}
+  <div class="grid">
+    <a class="tile" href="{{ url_for('week1.login') }}"><div class="t">Prihlasenie</div><div class="d">Vstup do internetbankingu</div></a>
+    <a class="tile" href="{{ url_for('week1.dashboard') }}"><div class="t">Prehlad uctu</div><div class="d">Udaje klienta a vlajka</div></a>
+    <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transakcie</div><div class="d">Vyhladavanie v historii</div></a>
+    <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">Novy prevod</div><div class="d">Platba s poznamkou</div></a>
+    <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Export vypisu</div><div class="d">Generovanie PDF vypisu</div></a>
+    <a class="tile" href="{{ url_for('week1.search') }}"><div class="t">Vyhladavanie</div><div class="d">Fulltext na stranke</div></a>
+    <a class="tile" href="{{ url_for('week1.admin_review') }}"><div class="t">Admin kontrola</div><div class="d">Kontrola prevodov (len admin)</div></a>
+    <a class="tile" href="{{ url_for('week1.collector_home') }}"><div class="t">Collector</div><div class="d">Zachytene data podla tokenu</div></a>
+  </div>
 {% endblock %}

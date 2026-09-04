@@ -2,12 +2,12 @@
 {% block title %}Prehlad - {{ bank_name }}{% endblock %}
 {% block content %}
   <h1>Prehlad uctu</h1>
-  <p>Klient: <strong>{{ client.full_name }}</strong> ({{ client.username }})</p>
-  <p>Rola: {{ client.role }}{% if client.is_vip %} &middot; VIP{% endif %}</p>
+  <table>
+    <tr><th>Klient</th><td>{{ client.full_name }} ({{ client.username }})</td></tr>
+    <tr><th>Rola</th><td>{{ client.role }}{% if client.is_vip %} &middot; VIP{% endif %}</td></tr>
+  </table>
   {% if w1_01_flag %}
     <p class="flag">Vlajka W1-01: <code>{{ w1_01_flag }}</code></p>
   {% endif %}
-  <p><a href="{{ url_for('week1.transactions') }}">Vyhladat transakcie</a></p>
-  <p><a href="{{ url_for('week1.transfer') }}">Novy prevod</a></p>
-  <p><a href="{{ url_for('week1.export') }}">Export vypisu do PDF</a></p>
+  <p class="muted">Dalsie funkcie najdes v hornom menu (Transakcie, Novy prevod, Export...).</p>
 {% endblock %}
