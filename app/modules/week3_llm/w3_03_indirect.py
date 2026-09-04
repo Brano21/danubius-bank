@@ -21,9 +21,18 @@ def system_summarize():
     )
 
 
+LEAK_KEYWORDS = ("poznamka", "poznámka", "instrukc", "inštrukc", "token", "heslo")
+
+
 def _output_filter(text):
-    # naive: redact only the verbatim flag
-    return text.replace(get_flag("W3-03"), "[REDACTED]")
+    # Naive DLP: redacts the secret ONLY when it appears next to a "sensitive"
+    # keyword (the kind of label-based filter developers actually write). The
+    # bypass is to make the model emit the bare value with no such wording.
+    flag = get_flag("W3-03")
+    low = text.lower()
+    if flag in text and any(k in low for k in LEAK_KEYWORDS):
+        return text.replace(flag, "[REDACTED]")
+    return text
 
 
 @bp.route("/summarize", methods=["GET", "POST"])
