@@ -88,16 +88,30 @@ def _admin_cookie():
     return "session=admin-danubka; flag=" + get_flag("W1-03")
 
 
+def _executable_collect_tokens(rendered_html):
+    # Collector tokens that would ACTUALLY execute in the admin's browser: those
+    # inside a real (unescaped) <script> tag or on*= handler. If the note was
+    # HTML-escaped, none of these patterns match, so nothing "runs".
+    out = []
+    for m in re.finditer(r"<script[^>]*>(.*?)</script>", rendered_html, re.I | re.S):
+        out += _COLLECT_RE.findall(m.group(1))
+    for m in re.finditer(r"on\w+\s*=\s*([\"'])(.*?)\1", rendered_html, re.I | re.S):
+        out += _COLLECT_RE.findall(m.group(2))
+    return out
+
+
 @bp.route("/w1-03/report/<int:tx_id>", methods=["GET", "POST"])
 @login_required
 def report_to_admin(tx_id):
-    # Emulate the admin viewing the reported note. The admin browser would run
-    # the stored payload, so we deliver the admin cookie to every collector
-    # token the note references. No real browser is launched.
+    # Emulate the admin viewing the reported note: render it EXACTLY as the admin
+    # view does (the _admin_note.html partial), then "execute" only what a real
+    # browser would - a payload inside an unescaped <script>/on*=. Escaping the
+    # note (the W1-03 fix) removes those, so nothing is delivered.
     row = fetch_one("SELECT note FROM transactions WHERE id = %s", (tx_id,))
     delivered = False
     if row and row["note"]:
-        tokens = _COLLECT_RE.findall(row["note"])
+        rendered = render_template("_admin_note.html", note=row["note"])
+        tokens = _executable_collect_tokens(rendered)
         if tokens:
             cookie = _admin_cookie()
             with _captures_lock:

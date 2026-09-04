@@ -10,7 +10,7 @@
         <td>{{ r.id }}</td>
         <td>{{ r.counterparty }}</td>
         <td>{{ r.amount }}</td>
-        <td>{{ r.note | safe }}</td>
+        <td>{% with note = r.note %}{% include "_admin_note.html" %}{% endwith %}</td>
       </tr>
     {% endfor %}
   </table>
