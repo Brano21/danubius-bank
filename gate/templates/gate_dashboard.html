@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sk">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="refresh" content="5">
@@ -31,25 +31,25 @@
 <body>
   <header>
     <h1>Danubius CTF &middot; monitoring</h1>
-    <span class="stat">{{ total }} requestov &middot; {{ summary|length }} aktivnych hracov &middot; {{ players|length }} uctov</span>
+    <span class="stat">{{ total }} requests &middot; {{ summary|length }} active players &middot; {{ players|length }} accounts</span>
     <span class="stat">auto-refresh 5s</span>
     <span class="sp"></span>
-    <a href="/_gate/admin/logout">Odhlasit</a>
+    <a href="/_gate/admin/logout">Log out</a>
   </header>
   <main>
-    <h2>Hraci</h2>
+    <h2>Players</h2>
     <div class="cards">
       {% for s in summary %}
         <div class="pcard"><div class="n">{{ s.player }}</div>
-          <div class="m">{{ s.c }} requestov &middot; naposledy {{ s.last_time }}</div></div>
+          <div class="m">{{ s.c }} requests &middot; last {{ s.last_time }}</div></div>
       {% else %}
-        <div class="empty">Zatial ziadna aktivita.</div>
+        <div class="empty">No activity yet.</div>
       {% endfor %}
     </div>
 
-    <h2>Posledne requesty</h2>
+    <h2>Recent requests</h2>
     <table>
-      <tr><th>Cas</th><th>Hrac</th><th>IP</th><th>Metoda</th><th>Cesta</th><th>Query</th><th>Stav</th></tr>
+      <tr><th>Time</th><th>Player</th><th>IP</th><th>Method</th><th>Path</th><th>Query</th><th>Status</th></tr>
       {% for r in recent %}
         <tr>
           <td>{{ r.time }}</td>
@@ -61,7 +61,7 @@
           <td class="s{{ (r.status // 100) if r.status else 0 }}">{{ r.status }}</td>
         </tr>
       {% else %}
-        <tr><td colspan="7" class="empty">Zatial ziadne requesty.</td></tr>
+        <tr><td colspan="7" class="empty">No requests yet.</td></tr>
       {% endfor %}
     </table>
   </main>

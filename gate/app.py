@@ -160,7 +160,7 @@ def player_login():
     if request.method == "POST":
         ip = request.remote_addr or "?"
         if _rate_limited(ip):
-            error = "Prilis vela pokusov. Skus o chvilu."
+            error = "Too many attempts. Try again shortly."
         else:
             u = request.form.get("username", "")
             p = request.form.get("password", "")
@@ -173,7 +173,7 @@ def player_login():
                 session["seen"] = time.time()
                 return redirect(nxt or "/")
             _note_fail(ip)
-            error = "Neplatne prihlasovacie udaje."
+            error = "Invalid credentials."
     return render_template("gate_login.html", error=error, next=nxt)
 
 
@@ -193,7 +193,7 @@ def admin_login():
             session.clear()
             session["is_admin"] = True
             return redirect(url_for("admin_dashboard"))
-        error = "Neplatne admin udaje."
+        error = "Invalid admin credentials."
     return render_template("gate_admin_login.html", error=error)
 
 

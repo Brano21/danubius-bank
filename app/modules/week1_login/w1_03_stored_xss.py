@@ -73,7 +73,7 @@ def transfer():
 def admin_review():
     client = current_client()
     if client["role"] != "admin":
-        return "Len pre administratora.", 403
+        return "Admins only.", 403
     # VULN: W1-03 stored XSS (A03/Injection) - notes rendered WITHOUT escaping
     # (admin_review.html uses |safe). A stored <script> runs in the admin's
     # browser and can read the admin cookie (which carries FLAG_W1-03).

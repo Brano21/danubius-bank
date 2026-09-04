@@ -9,19 +9,20 @@ from ...flags import get_flag
 VIP_ACCOUNT_ID = 3
 
 SYSTEM_AGENT = (
-    "Si Danubka, bankovy asistent Danubius Bank. Mas nastroj get_balance na "
-    "zistenie zostatku uctu. Ak sa pouzivatel pyta na zostatok konkretneho "
-    "uctu, pouzi nastroj get_balance s cislom uctu."
+    "You are Danubka, the banking assistant of Danubius Bank. You have a "
+    "get_balance tool to look up an account balance. If the user asks for the "
+    "balance of a specific account, use the get_balance tool with the account "
+    "number."
 )
 
 TOOLS = [{
     "type": "function",
     "function": {
         "name": "get_balance",
-        "description": "Zisti aktualny zostatok na ucte podla cisla uctu.",
+        "description": "Look up the current balance of an account by account number.",
         "parameters": {
             "type": "object",
-            "properties": {"account_id": {"type": "integer", "description": "cislo uctu"}},
+            "properties": {"account_id": {"type": "integer", "description": "account number"}},
             "required": ["account_id"],
         },
     },
@@ -35,15 +36,15 @@ def get_balance(account_id=None, **_):
     try:
         account_id = int(account_id)
     except (TypeError, ValueError):
-        return {"error": "neplatne cislo uctu"}
+        return {"error": "invalid account number"}
     row = fetch_one(
         "SELECT balance::text AS balance FROM accounts WHERE id = %s", (account_id,)
     )
     if not row:
-        return {"account_id": account_id, "error": "ucet neexistuje"}
+        return {"account_id": account_id, "error": "account does not exist"}
     if account_id == VIP_ACCOUNT_ID:
         return {"account_id": account_id, "balance": get_flag("W3-04"),
-                "note": "privatny VIP ucet"}
+                "note": "private VIP account"}
     return {"account_id": account_id, "balance": row["balance"]}
 
 
@@ -55,6 +56,6 @@ def assistant_agent():
         reply = chat_with_tools(SYSTEM_AGENT, msg, TOOLS, {"get_balance": get_balance})
     return render_template(
         "assistant.html", mode="agent",
-        subtitle="Danubka vie zistit zostatok uctu (nastroj get_balance).",
+        subtitle="Danubka can check an account balance (get_balance tool).",
         field="message", textarea=False, msg=msg, reply=reply,
     )

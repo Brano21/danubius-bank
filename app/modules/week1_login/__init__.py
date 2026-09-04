@@ -44,7 +44,7 @@ def login():
         if row:
             login_user(row["id"])
             return redirect(url_for("week1.dashboard"))
-        error = "Nespravne prihlasovacie udaje."
+        error = "Invalid credentials."
     return render_template("login.html", error=error)
 
 
@@ -59,13 +59,13 @@ def register():
         p1 = request.form.get("password", "")
         p2 = request.form.get("password2", "")
         if "@" not in email or "." not in email.split("@")[-1]:
-            error = "Zadaj platny email."
+            error = "Enter a valid email."
         elif len(p1) < 6:
-            error = "Heslo musi mat aspon 6 znakov."
+            error = "Password must be at least 6 characters."
         elif p1 != p2:
-            error = "Hesla sa nezhoduju."
+            error = "Passwords do not match."
         elif fetch_one("SELECT id FROM clients WHERE username = %s", (email,)):
-            error = "Tento email uz je registrovany."
+            error = "This email is already registered."
         else:
             cur = get_db().cursor()
             cur.execute(
@@ -83,7 +83,7 @@ def register():
             cur.close()
             return render_template(
                 "login.html", error=None,
-                info="Registracia uspesna. Prihlas sa svojim emailom a heslom.",
+                info="Registration successful. Log in with your email and password.",
             )
     return render_template("register.html", error=error)
 

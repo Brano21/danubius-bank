@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Nahlasene - {{ bank_name }}{% endblock %}
+{% block title %}Reported - {{ bank_name }}{% endblock %}
 {% block content %}
-  <h1>Nahlasene adminovi</h1>
-  <p>Prevod #{{ tx_id }} bol zaradeny na kontrolu a administrator si ho prezrel.</p>
-  <p><em>Ak tvoj payload nieco zachytil, najdes to vo svojom collectore
-     (/w1-03/collect/&lt;tvoj-token&gt;).</em></p>
+  <h1>Reported to admin</h1>
+  <p>Transfer #{{ tx_id }} was queued for review and the administrator has viewed it.</p>
+  <p><em>If your payload captured anything, you'll find it in your collector
+     (/w1-03/collect/&lt;your-token&gt;).</em></p>
 {% endblock %}

@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Export - {{ bank_name }}{% endblock %}
+{% block title %}Statement export - {{ bank_name }}{% endblock %}
 {% block content %}
-  <h1>Export vypisu do PDF</h1>
-  <form method="get">
-    <label>Nazov suboru<br><input name="name" value="{{ name }}" size="50"></label>
-    <button type="submit">Exportovat</button>
+  <h1>Export statement to PDF</h1>
+  <form class="stack" method="get">
+    <label>File name</label>
+    <input name="name" value="{{ name }}" size="50">
+    <button type="submit">Export</button>
   </form>
-  <h3>Vystup exportu</h3>
-  <pre style="background:#111;color:#3f3;padding:10px;overflow:auto">{{ output }}</pre>
+  <h3>Export output</h3>
+  <pre style="background:#0e1b2a;color:#67e480;padding:12px;border-radius:8px;overflow:auto">{{ output }}</pre>
 {% endblock %}

@@ -17,6 +17,6 @@ def assistant_secure():
         reply = chat(danubka_secure(), msg)
     return render_template(
         "assistant.html", mode="secure",
-        subtitle="Danubka v bezpecnom rezime - chrani testovaci udaj.",
+        subtitle="Danubka in secure mode - protects a test value.",
         field="message", textarea=False, msg=msg, reply=reply,
     )

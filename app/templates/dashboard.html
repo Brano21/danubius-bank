@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Prehlad - {{ bank_name }}{% endblock %}
+{% block title %}Overview - {{ bank_name }}{% endblock %}
 {% block content %}
-  <h1>Prehlad uctu</h1>
+  <h1>Account overview</h1>
   <table>
-    <tr><th>Klient</th><td>{{ client.full_name }} ({{ client.username }})</td></tr>
-    <tr><th>Rola</th><td>{{ client.role }}{% if client.is_vip %} &middot; VIP{% endif %}</td></tr>
+    <tr><th>Client</th><td>{{ client.full_name }} ({{ client.username }})</td></tr>
+    <tr><th>Role</th><td>{{ client.role }}{% if client.is_vip %} &middot; VIP{% endif %}</td></tr>
   </table>
   {% if w1_01_flag %}
-    <p class="flag">Vlajka W1-01: <code>{{ w1_01_flag }}</code></p>
+    <p class="flag">Flag W1-01: <code>{{ w1_01_flag }}</code></p>
   {% endif %}
-  <p class="muted">Dalsie funkcie najdes v hornom menu (Transakcie, Novy prevod, Export...).</p>
+  <p class="muted">More features are in the top menu (Transactions, New transfer, Statement export...).</p>
 {% endblock %}

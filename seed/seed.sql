@@ -57,7 +57,7 @@ INSERT INTO clients (username, password, full_name, role, is_vip) VALUES
   ('j.novak',  'jesenina12',   'Jan Novak',        'client', FALSE),
   ('m.horvat', 'leto2023!',    'Maria Horvathova', 'client', FALSE),
   ('p.kovac',  'Qwerty!42',    'Peter Kovac',      'client', TRUE),
-  ('admin',    'S3cr3t-Adm1n', 'Spravca Danubius', 'admin',  FALSE),
+  ('admin',    'S3cr3t-Adm1n', 'Danubius Admin',   'admin',  FALSE),
   ('e.tomas',  'macka.mnau',   'Eva Tomasova',     'client', FALSE);
 
 INSERT INTO accounts (client_id, iban, balance, currency, account_limit) VALUES
@@ -75,11 +75,11 @@ INSERT INTO cards (account_id, card_number, card_holder, expiry, cvv, status, is
   (5, '4917100012340052', 'EVA TOMASOVA',     '07/26', '145', 'active',  FALSE);
 
 INSERT INTO transactions (account_id, amount, currency, counterparty, note, direction) VALUES
-  (1,   -45.90, 'EUR', 'Tesco Stores SR',      'nakup potravin',   'out'),
-  (1,  -120.00, 'EUR', 'SPP a.s.',             'faktura plyn',     'out'),
-  (1,  1500.00, 'EUR', 'Zamestnavatel s.r.o.', 'vyplata',          'in'),
-  (2,   -12.49, 'EUR', 'Netflix',              'predplatne',       'out'),
-  (2,  -890.00, 'EUR', 'Nabytok Plus',         'sedacka',          'out'),
-  (3, -9800.00, 'EUR', 'Auto Impex',           'zaloha vozidlo',   'out'),
-  (3, 25000.00, 'EUR', 'Investicny ucet',      'dividenda',        'in'),
-  (5,   -30.00, 'EUR', 'Kaviaren U Dunaja',    'kava a zakusok',   'out');
+  (1,   -45.90, 'EUR', 'Tesco Stores SR',   'groceries',    'out'),
+  (1,  -120.00, 'EUR', 'SPP a.s.',          'gas invoice',  'out'),
+  (1,  1500.00, 'EUR', 'Employer Ltd.',     'salary',       'in'),
+  (2,   -12.49, 'EUR', 'Netflix',           'subscription', 'out'),
+  (2,  -890.00, 'EUR', 'Furniture Plus',    'sofa',         'out'),
+  (3, -9800.00, 'EUR', 'Auto Impex',        'car deposit',  'out'),
+  (3, 25000.00, 'EUR', 'Investment Acct.',  'dividend',     'in'),
+  (5,   -30.00, 'EUR', 'Danube Cafe',       'coffee & cake','out');

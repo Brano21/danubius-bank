@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Admin kontrola - {{ bank_name }}{% endblock %}
+{% block title %}Admin review - {{ bank_name }}{% endblock %}
 {% block content %}
-  <h1>Administrator - kontrola prevodov</h1>
-  <p>Prihlaseny ako administrator. Cookie relacie: <code>{{ admin_cookie }}</code></p>
+  <h1>Administrator &mdash; transfer review</h1>
+  <p>Signed in as administrator. Session cookie: <code>{{ admin_cookie }}</code></p>
   <table>
-    <tr><th>#</th><th>Protistrana</th><th>Suma</th><th>Poznamka</th></tr>
+    <tr><th>#</th><th>Counterparty</th><th>Amount</th><th>Note</th></tr>
     {% for r in rows %}
       <tr>
         <td>{{ r.id }}</td>

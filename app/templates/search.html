@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Vyhladavanie - {{ bank_name }}{% endblock %}
+{% block title %}Search - {{ bank_name }}{% endblock %}
 {% block content %}
   <script>window.__proof="{{ nonce }}";</script>
-  <h1>Vyhladavanie na stranke</h1>
+  <h1>Site search</h1>
   <form method="get">
-    <input name="q" value="{{ q }}" size="40" placeholder="hladany vyraz">
-    <button type="submit">Hladat</button>
+    <input name="q" value="{{ q }}" size="40" placeholder="search term">
+    <button type="submit">Search</button>
   </form>
   {% if q %}
-    <p>Vysledky pre: {{ q | safe }}</p>
+    <p>Results for: {{ q | safe }}</p>
   {% endif %}
   {% if flag %}
-    <p class="flag">Vlajka W1-04: <code>{{ flag }}</code></p>
+    <p class="flag">Flag W1-04: <code>{{ flag }}</code></p>
   {% endif %}
 {% endblock %}

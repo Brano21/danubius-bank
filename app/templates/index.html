@@ -1,37 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
 {% if client %}
-  {# Prihlaseny: portalovy domov s bankovymi funkciami #}
-  <h1>Dobry den, {{ client.full_name }}</h1>
-  <p class="muted">Vitajte vo svojom internetbankingu Danubius.</p>
+  <h1>Hello, {{ client.full_name }}</h1>
+  <p class="muted">Welcome to your Danubius online banking.</p>
   <div class="grid">
-    <a class="tile" href="{{ url_for('week1.dashboard') }}"><div class="t">Prehlad uctu</div><div class="d">Zostatok a udaje klienta</div></a>
-    <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transakcie</div><div class="d">Historia a vyhladavanie</div></a>
-    <a class="tile" href="{{ url_for('week1.search') }}"><div class="t">Vyhladavanie</div><div class="d">Fulltext na stranke</div></a>
-    <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">Novy prevod</div><div class="d">Odoslat platbu s poznamkou</div></a>
-    <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Export vypisu</div><div class="d">Stiahnut PDF vypis</div></a>
+    <a class="tile" href="{{ url_for('week1.dashboard') }}"><div class="t">Account overview</div><div class="d">Balance and client details</div></a>
+    <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transactions</div><div class="d">History and search</div></a>
+    <a class="tile" href="{{ url_for('week1.search') }}"><div class="t">Search</div><div class="d">Full-text site search</div></a>
+    <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">New transfer</div><div class="d">Send a payment with a note</div></a>
+    <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Statement export</div><div class="d">Download a PDF statement</div></a>
     {% if WEEK >= 3 %}
-      <a class="tile" href="{{ url_for('week3.assistant') }}"><div class="t">Danubka (AI asistent)</div><div class="d">Chat, zhrnutie, zostatky</div></a>
+      <a class="tile" href="{{ url_for('week3.assistant') }}"><div class="t">Danubka (AI assistant)</div><div class="d">Chat, summaries, balances</div></a>
     {% endif %}
     {% if client.role == 'admin' %}
-      <a class="tile" href="{{ url_for('week1.admin_review') }}"><div class="t">Admin kontrola</div><div class="d">Kontrola nahlasenych prevodov</div></a>
+      <a class="tile" href="{{ url_for('week1.admin_review') }}"><div class="t">Admin review</div><div class="d">Review reported transfers</div></a>
     {% endif %}
   </div>
 {% else %}
-  {# Neprihlaseny: verejna marketingova landing page #}
   <div class="hero">
-    <h1>Danubius Bank &mdash; internetbanking pre kazdy den</h1>
-    <p class="lead">Platby, karty a vypisy na jednom mieste. Prihlaste sa alebo si
-       vytvorte ucet a spravujte svoje financie 24/7.</p>
+    <h1>Danubius Bank &mdash; everyday online banking</h1>
+    <p class="lead">Payments, cards and statements in one place. Log in or create an
+       account and manage your finances 24/7.</p>
     <p>
-      <a class="btn" href="{{ url_for('week1.login') }}">Prihlasit sa</a>
-      <a class="btn btn-2" href="{{ url_for('week1.register') }}">Vytvorit ucet</a>
+      <a class="btn" href="{{ url_for('week1.login') }}">Log in</a>
+      <a class="btn btn-2" href="{{ url_for('week1.register') }}">Create account</a>
     </p>
   </div>
   <div class="grid">
-    <div class="feature"><div class="t">Okamzite platby</div><div class="d">SEPA prevody a trvale prikazy v realnom case.</div></div>
-    <div class="feature"><div class="t">Platobne karty</div><div class="d">Sprava kariet, limitov a bezpecnostnych nastaveni.</div></div>
-    <div class="feature"><div class="t">Bezpecnost na prvom mieste</div><div class="d">Prihlasenie s ochranou a nepretrzity dohlad transakcii.</div></div>
+    <div class="feature"><div class="t">Instant payments</div><div class="d">SEPA transfers and standing orders in real time.</div></div>
+    <div class="feature"><div class="t">Payment cards</div><div class="d">Manage cards, limits and security settings.</div></div>
+    <div class="feature"><div class="t">Security first</div><div class="d">Protected sign-in and continuous transaction monitoring.</div></div>
   </div>
 {% endif %}
 {% endblock %}

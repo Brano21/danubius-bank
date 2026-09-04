@@ -28,7 +28,7 @@ def chat(system, user, timeout=120):
         r.raise_for_status()
         return r.json()["message"]["content"]
     except Exception as e:  # noqa: BLE001
-        return "[asistent momentalne nedostupny: " + str(e) + "]"
+        return "[assistant temporarily unavailable: " + str(e) + "]"
 
 
 def chat_with_tools(system, user, tools, handlers, timeout=120):
@@ -49,7 +49,7 @@ def chat_with_tools(system, user, tools, handlers, timeout=120):
         r.raise_for_status()
         message = r.json()["message"]
     except Exception as e:  # noqa: BLE001
-        return "[asistent momentalne nedostupny: " + str(e) + "]"
+        return "[assistant temporarily unavailable: " + str(e) + "]"
 
     calls = message.get("tool_calls") or []
     if not calls:
@@ -67,7 +67,7 @@ def chat_with_tools(system, user, tools, handlers, timeout=120):
         if fn in handlers:
             result = handlers[fn](**args) if isinstance(args, dict) else handlers[fn](args)
             lines.append(
-                "Nastroj " + fn + "(" + json.dumps(args, ensure_ascii=False)
+                "Tool " + fn + "(" + json.dumps(args, ensure_ascii=False)
                 + ") -> " + json.dumps(result, ensure_ascii=False)
             )
     return "\n".join(lines) if lines else message.get("content", "")

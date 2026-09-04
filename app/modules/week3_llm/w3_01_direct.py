@@ -17,6 +17,6 @@ def assistant():
         reply = chat(danubka_naive(), msg)
     return render_template(
         "assistant.html", mode="chat",
-        subtitle="Spytaj sa Danubky na cokolvek.",
+        subtitle="Ask Danubka anything.",
         field="message", textarea=False, msg=msg, reply=reply,
     )

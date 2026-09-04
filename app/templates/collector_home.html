@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Collector - {{ bank_name }}{% endblock %}
 {% block content %}
-  <h1>XSS Collector</h1>
-  <p class="muted">Zadaj svoj token a pozri, co tvoj payload zachytil na
+  <h1>XSS collector</h1>
+  <p class="muted">Enter your token to see what your payload captured at
      <code>/w1-03/collect/&lt;token&gt;</code>.</p>
-  <form method="get" action="{{ url_for('week1.collector_home') }}">
-    <label>Token
-      <input name="token" placeholder="napr. mojtoken123" size="30">
-    </label>
-    <button type="submit">Zobrazit</button>
+  <form class="stack" method="get" action="{{ url_for('week1.collector_home') }}">
+    <label>Token</label>
+    <input name="token" placeholder="e.g. mytoken123" size="30">
+    <button type="submit">Show</button>
   </form>
 {% endblock %}
