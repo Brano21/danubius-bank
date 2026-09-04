@@ -6,8 +6,18 @@
     <tr><th>Client</th><td>{{ client.full_name }} ({{ client.username }})</td></tr>
     <tr><th>Role</th><td>{{ client.role }}{% if client.is_vip %} &middot; VIP{% endif %}</td></tr>
   </table>
+
+  <h3>Accounts</h3>
+  <table>
+    <tr><th>IBAN</th><th>Balance</th><th>Currency</th></tr>
+    {% for a in accounts %}
+      <tr><td>{{ a.iban }}</td><td>{{ a.balance }}</td><td>{{ a.currency }}</td></tr>
+    {% else %}
+      <tr><td colspan="3"><em>No accounts.</em></td></tr>
+    {% endfor %}
+  </table>
+
   {% if w1_01_flag %}
     <p class="flag">Flag W1-01: <code>{{ w1_01_flag }}</code></p>
   {% endif %}
-  <p class="muted">More features are in the top menu (Transactions, New transfer, Statement export...).</p>
 {% endblock %}

@@ -7,11 +7,11 @@
     <button type="submit">Search</button>
   </form>
   <table>
-    <tr><th>Counterparty</th><th>Note</th><th>Direction</th></tr>
+    <tr><th>Counterparty</th><th>Amount</th><th>Note</th><th>Direction</th></tr>
     {% for r in rows %}
-      <tr><td>{{ r.counterparty }}</td><td>{{ r.note }}</td><td>{{ r.direction }}</td></tr>
+      <tr><td>{{ r.counterparty }}</td><td>{{ r.amount }}</td><td>{{ r.note }}</td><td>{{ r.direction }}</td></tr>
     {% else %}
-      <tr><td colspan="3"><em>No results.</em></td></tr>
+      <tr><td colspan="4"><em>No results.</em></td></tr>
     {% endfor %}
   </table>
 {% endblock %}
