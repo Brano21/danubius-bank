@@ -73,6 +73,21 @@ Napr. úloha `W1-05` → `FLAG_W1_05`. (Bez pomlčiek, nech sú env/`.env` preno
 | W4-04 | Statická analýza vzorky | — | _tbd_ |
 | W4-05 | Malware report (human-graded) | — | _tbd_ |
 
+## Poznámky k úlohám (pre CTFd zadania)
+
+Aplikácia je koncipovaná ako reálny internetbanking: neprihlásený vidí len
+verejnú landing page + prihlásenie a verejné vyhľadávanie; bankové funkcie
+(prehľad, transakcie, prevody, export, admin) sú až po prihlásení. Preto:
+
+- **W1-03 (stored XSS):** collector útočníka je in-app na `/w1-03/collect/<token>`
+  — zámerne **nie je v bankovom menu** (je to nástroj útočníka, nie funkcia banky).
+  V zadaní CTFd uveď, že hráč exfiltruje cookie na `/w1-03/collect/<vlastný-token>`
+  a výsledok si pozrie tam (alebo cez pomocnú stránku `/collector`). Admin „bot"
+  je emulovaný a spustí sa po akcii „Nahlásiť adminovi".
+- **W1-04 (reflected XSS):** vyhľadávanie je verejná časť stránky (pred loginom).
+- **Admin panel** (`/admin/review`) je v menu iba pre rolu admin; bežný klient sa
+  k nemu dostane až po eskalácii (napr. login bypass ako `admin`).
+
 ## Štruktúra
 
 ```

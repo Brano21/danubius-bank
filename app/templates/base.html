@@ -52,6 +52,10 @@
     .tile .t{font-weight:700;color:var(--text)}
     .tile .d{color:var(--muted);font-size:.85rem;margin-top:4px}
     .muted{color:var(--muted)}
+    .hero{padding:6px 0 14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+    .lead{font-size:1.05rem;color:var(--muted);max-width:640px}
+    .btn{display:inline-block;background:var(--accent);color:#fff;padding:11px 18px;border-radius:8px;font-weight:600;margin-top:8px}
+    .btn:hover{background:#1667c2;text-decoration:none}
     pre{background:#0e1b2a;color:#67e480;padding:12px;border-radius:8px;overflow:auto;font-size:.86rem}
     footer{max-width:1000px;margin:18px auto;padding:0 20px 30px;color:var(--muted);font-size:.8rem}
     footer .warn{color:#a05a00}
@@ -69,18 +73,19 @@
   </header>
   <nav class="mainnav">
     <div class="inner">
-      <a href="{{ url_for('week1.index') }}">Domov</a>
-      <a href="{{ url_for('week1.search') }}">Vyhladavanie</a>
-      <a href="{{ url_for('week1.collector_home') }}">Collector</a>
       {% if client %}
         <a href="{{ url_for('week1.dashboard') }}">Prehlad</a>
         <a href="{{ url_for('week1.transactions') }}">Transakcie</a>
         <a href="{{ url_for('week1.transfer') }}">Novy prevod</a>
-        <a href="{{ url_for('week1.export') }}">Export</a>
-        <a href="{{ url_for('week1.admin_review') }}">Admin</a>
+        <a href="{{ url_for('week1.export') }}">Export vypisu</a>
+        {% if client.role == 'admin' %}
+          <a href="{{ url_for('week1.admin_review') }}">Admin kontrola</a>
+        {% endif %}
         <a class="spacer" href="{{ url_for('week1.logout') }}">Odhlasit ({{ client.username }})</a>
       {% else %}
-        <a class="spacer" href="{{ url_for('week1.login') }}">Prihlasit</a>
+        <a href="{{ url_for('week1.index') }}">Domov</a>
+        <a href="{{ url_for('week1.search') }}">Vyhladavanie</a>
+        <a class="spacer" href="{{ url_for('week1.login') }}">Prihlasit sa</a>
       {% endif %}
     </div>
   </nav>

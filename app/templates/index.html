@@ -1,18 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>Vitajte v Danubius Bank</h1>
-  <p class="muted">Fiktivny internetbanking. Vyberte funkciu alebo sa prihlaste do uctu.</p>
-  {% if client %}
-    <p>Prihlaseny ako <strong>{{ client.full_name }}</strong> ({{ client.username }}).</p>
-  {% endif %}
+{% if client %}
+  {# Prihlaseny: portalovy domov s bankovymi funkciami #}
+  <h1>Dobry den, {{ client.full_name }}</h1>
+  <p class="muted">Vitajte vo svojom internetbankingu Danubius.</p>
   <div class="grid">
-    <a class="tile" href="{{ url_for('week1.login') }}"><div class="t">Prihlasenie</div><div class="d">Vstup do internetbankingu</div></a>
-    <a class="tile" href="{{ url_for('week1.dashboard') }}"><div class="t">Prehlad uctu</div><div class="d">Udaje klienta a vlajka</div></a>
-    <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transakcie</div><div class="d">Vyhladavanie v historii</div></a>
-    <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">Novy prevod</div><div class="d">Platba s poznamkou</div></a>
-    <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Export vypisu</div><div class="d">Generovanie PDF vypisu</div></a>
-    <a class="tile" href="{{ url_for('week1.search') }}"><div class="t">Vyhladavanie</div><div class="d">Fulltext na stranke</div></a>
-    <a class="tile" href="{{ url_for('week1.admin_review') }}"><div class="t">Admin kontrola</div><div class="d">Kontrola prevodov (len admin)</div></a>
-    <a class="tile" href="{{ url_for('week1.collector_home') }}"><div class="t">Collector</div><div class="d">Zachytene data podla tokenu</div></a>
+    <a class="tile" href="{{ url_for('week1.dashboard') }}"><div class="t">Prehlad uctu</div><div class="d">Zostatok a udaje klienta</div></a>
+    <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transakcie</div><div class="d">Historia a vyhladavanie</div></a>
+    <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">Novy prevod</div><div class="d">Odoslat platbu s poznamkou</div></a>
+    <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Export vypisu</div><div class="d">Stiahnut PDF vypis</div></a>
+    {% if client.role == 'admin' %}
+      <a class="tile" href="{{ url_for('week1.admin_review') }}"><div class="t">Admin kontrola</div><div class="d">Kontrola nahlasenych prevodov</div></a>
+    {% endif %}
   </div>
+{% else %}
+  {# Neprihlaseny: verejna marketingova landing page #}
+  <div class="hero">
+    <h1>Danubius Bank &mdash; internetbanking pre kazdy den</h1>
+    <p class="lead">Platby, karty a vypisy na jednom mieste. Prihlaste sa do svojho
+       uctu a spravujte svoje financie bezpecne 24/7.</p>
+    <a class="btn" href="{{ url_for('week1.login') }}">Prihlasit sa do internetbankingu</a>
+  </div>
+  <div class="grid">
+    <div class="tile"><div class="t">Okamzite platby</div><div class="d">SEPA prevody a trvale prikazy v realnom case.</div></div>
+    <div class="tile"><div class="t">Platobne karty</div><div class="d">Sprava kariet, limitov a bezpecnostnych nastaveni.</div></div>
+    <div class="tile"><div class="t">Bezpecnost na prvom mieste</div><div class="d">Prihlasenie s ochranou a nepretrzity dohlad transakcii.</div></div>
+  </div>
+{% endif %}
 {% endblock %}
