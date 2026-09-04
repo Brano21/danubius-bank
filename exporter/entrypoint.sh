@@ -6,5 +6,5 @@ set -e
 echo "$FLAG_W1_05" > /flag
 chmod 644 /flag
 mkdir -p /srv/exports
-printf 'Danubius Bank - vypis uctu (ukazka)\n' > /srv/exports/vypis_2024.pdf
+printf 'Danubius Bank - account statement (sample)\n' > /srv/exports/statement_2024.pdf
 exec gunicorn -b 0.0.0.0:9005 -w 1 --threads 4 app:app

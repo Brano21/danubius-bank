@@ -13,12 +13,12 @@ app = Flask(__name__)
 
 @app.route("/run")
 def run():
-    name = request.args.get("name", "vypis.pdf")
+    name = request.args.get("name", "statement.pdf")
     # VULN: W1-05 OS command injection (A05). The user-controlled filename is
     # concatenated into a shell command executed with shell=True, so a payload
-    # such as   vypis.pdf; id   or   vypis.pdf; cat /flag   runs arbitrary
+    # such as   statement.pdf; id   or   statement.pdf; cat /flag   runs arbitrary
     # commands in this container.
-    cmd = "echo 'Priprava PDF exportu vypisu ...'; ls -la /srv/exports/" + name
+    cmd = "echo 'Preparing PDF statement export ...'; ls -la /srv/exports/" + name
     try:
         out = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, timeout=10

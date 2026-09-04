@@ -16,7 +16,7 @@ from ...auth import login_required
 @bp.route("/export")
 @login_required
 def export():
-    name = request.args.get("name", "vypis.pdf")
+    name = request.args.get("name", "statement.pdf")
     try:
         r = requests.get(
             current_app.config["EXPORTER_URL"] + "/run",
