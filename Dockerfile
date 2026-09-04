@@ -10,4 +10,6 @@ COPY app/ ./app/
 COPY wsgi.py .
 
 EXPOSE 8080
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "-w", "2", "--access-logfile", "-", "wsgi:app"]
+# Single worker + threads: keeps the in-memory W1-03 capture store consistent
+# across requests (and keeps FLAG_W1-03 out of the DB / out of SQLi reach).
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "-w", "1", "--threads", "8", "--worker-class", "gthread", "--access-logfile", "-", "wsgi:app"]

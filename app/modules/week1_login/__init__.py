@@ -107,3 +107,7 @@ def search_solved():
 def logout():
     logout_user()
     return redirect(url_for("week1.index"))
+
+
+# W1-03 stored XSS lives in its own bounded file, registered on this blueprint.
+from . import w1_03_stored_xss  # noqa: E402,F401

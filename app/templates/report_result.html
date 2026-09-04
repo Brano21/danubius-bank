@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Nahlasene - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Nahlasene adminovi</h1>
+  <p>Prevod #{{ tx_id }} bol zaradeny na kontrolu a administrator si ho prezrel.</p>
+  <p><em>Ak tvoj payload nieco zachytil, najdes to vo svojom collectore
+     (/w1-03/collect/&lt;tvoj-token&gt;).</em></p>
+{% endblock %}

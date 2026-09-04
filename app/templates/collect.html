@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Collector - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Collector: {{ token }}</h1>
+  {% if items %}
+    <ul>
+      {% for it in items %}<li><code>{{ it }}</code></li>{% endfor %}
+    </ul>
+  {% else %}
+    <p><em>Zatial nic nezachytene pre tento token.</em></p>
+  {% endif %}
+{% endblock %}

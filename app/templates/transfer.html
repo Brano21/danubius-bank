@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Novy prevod - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Novy prevod</h1>
+  <form method="post">
+    <label>Protistrana<br><input name="counterparty" size="40" value="Test prevod"></label><br>
+    <label>Suma (EUR)<br><input name="amount" value="10"></label><br>
+    <label>Poznamka<br><input name="note" size="60"></label><br>
+    <button type="submit">Odoslat prevod</button>
+  </form>
+  {% if new_id %}
+    <p>Prevod #{{ new_id }} vytvoreny.
+       <a href="{{ url_for('week1.report_to_admin', tx_id=new_id) }}">Nahlasit adminovi na kontrolu</a></p>
+  {% endif %}
+{% endblock %}
