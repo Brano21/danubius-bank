@@ -9,6 +9,9 @@
     <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transakcie</div><div class="d">Historia a vyhladavanie</div></a>
     <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">Novy prevod</div><div class="d">Odoslat platbu s poznamkou</div></a>
     <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Export vypisu</div><div class="d">Stiahnut PDF vypis</div></a>
+    {% if WEEK >= 3 %}
+      <a class="tile" href="{{ url_for('week3.assistant') }}"><div class="t">Danubka (AI asistent)</div><div class="d">Chat, zhrnutie, zostatky</div></a>
+    {% endif %}
     {% if client.role == 'admin' %}
       <a class="tile" href="{{ url_for('week1.admin_review') }}"><div class="t">Admin kontrola</div><div class="d">Kontrola nahlasenych prevodov</div></a>
     {% endif %}

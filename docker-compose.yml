@@ -47,9 +47,13 @@ services:
       FLAG_W3_02: ${FLAG_W3_02:-RPC{unset_w3_02}}
       FLAG_W3_03: ${FLAG_W3_03:-RPC{unset_w3_03}}
       FLAG_W3_04: ${FLAG_W3_04:-RPC{unset_w3_04}}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
     depends_on:
       db:
         condition: service_healthy
+      ollama:
+        condition: service_started
     ports:
       - "8080:8080"
     networks:
@@ -71,7 +75,19 @@ services:
     # read_only omitted: the entrypoint writes /flag at startup. Isolation is
     # enforced by cap_drop:ALL + the internal network (no egress, no db/ollama).
 
+  # Week 3 LLM assistant backend. Pulls the model on first start (~2GB into the
+  # ollama_models volume). Not published; only web talks to it over the network.
+  ollama:
+    build: ./ollama
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+    volumes:
+      - ollama_models:/root/.ollama
+
 networks:
   # `default` is auto-created for db/web (has outbound). exporter is NOT on it.
   exporter_isolated:
     internal: true
+
+volumes:
+  ollama_models:

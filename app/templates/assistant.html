@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Danubka - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Danubka &mdash; AI asistent</h1>
+  <div class="submenu">
+    <a href="{{ url_for('week3.assistant') }}">Chat</a>
+    <a href="{{ url_for('week3.assistant_secure') }}">Bezpecny rezim</a>
+    <a href="{{ url_for('week3.assistant_summarize') }}">Zhrnutie dokumentu</a>
+    <a href="{{ url_for('week3.assistant_agent') }}">Agent (zostatky)</a>
+  </div>
+  <p class="muted">{{ subtitle }}</p>
+  <form method="post">
+    {% if textarea %}
+      <textarea name="{{ field }}" rows="6">{{ msg }}</textarea>
+    {% else %}
+      <input name="{{ field }}" size="60" value="{{ msg }}" placeholder="napis spravu...">
+    {% endif %}
+    <br><button type="submit">Odoslat</button>
+  </form>
+  {% if reply is not none %}
+    <h3>Danubka odpoveda</h3>
+    <div class="reply">{{ reply }}</div>
+  {% endif %}
+{% endblock %}
