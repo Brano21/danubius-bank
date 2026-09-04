@@ -8,8 +8,12 @@ services:
       POSTGRES_DB: ${DB_NAME:-danubius}
       POSTGRES_USER: ${DB_USER:-danubius}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-danubius}
+      # W1-02 seed exception: this ONE flag is injected into the DB (as the VIP
+      # card's masked number) so it can be leaked via UNION. NOT given to web.
+      FLAG_W1_02: ${FLAG_W1_02:-RPC{unset_w1_02}}
     volumes:
       - ./seed/seed.sql:/docker-entrypoint-initdb.d/10-seed.sql:ro
+      - ./seed/20-inject-w1-02-flag.sh:/docker-entrypoint-initdb.d/20-inject-w1-02-flag.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-danubius} -d ${DB_NAME:-danubius}"]
       interval: 5s

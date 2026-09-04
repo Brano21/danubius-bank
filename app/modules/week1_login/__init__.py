@@ -9,7 +9,7 @@ command injection) will be introduced here, each isolated and marked with a
 from flask import Blueprint, render_template, request, redirect, url_for
 
 from ...auth import login_user, logout_user, current_client, login_required
-from ...db import fetch_one
+from ...db import fetch_one, fetch_all
 from ...flags import get_flag
 
 bp = Blueprint("week1", __name__)
@@ -56,6 +56,30 @@ def dashboard():
     # the intended way in.
     w1_01_flag = get_flag("W1-01") if client["id"] == 1 else None
     return render_template("dashboard.html", client=client, w1_01_flag=w1_01_flag)
+
+
+@bp.route("/transactions")
+@login_required
+def transactions():
+    client = current_client()
+    acct = fetch_one(
+        "SELECT id FROM accounts WHERE client_id = %s ORDER BY id LIMIT 1",
+        (client["id"],),
+    )
+    acct_id = acct["id"] if acct else 0
+    q = request.args.get("q", "")
+    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
+    # concatenated into the query, so a UNION SELECT appends rows from another
+    # table - e.g. cards - leaking card numbers. The visible columns are all
+    # text, so a working UNION needs three text columns.
+    sql = (
+        "SELECT counterparty, note, direction FROM transactions "
+        "WHERE account_id = " + str(acct_id) + " "
+        "AND counterparty ILIKE '%" + q + "%' "
+        "ORDER BY ts DESC"
+    )
+    rows = fetch_all(sql)
+    return render_template("transactions.html", rows=rows, q=q, client=client)
 
 
 @bp.route("/logout")

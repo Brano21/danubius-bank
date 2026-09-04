@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Transakcie - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Vyhladavanie transakcii</h1>
+  <form method="get">
+    <input name="q" value="{{ q }}" placeholder="hladaj podla protistrany" size="40">
+    <button type="submit">Hladat</button>
+  </form>
+  <table>
+    <tr><th>Protistrana</th><th>Poznamka</th><th>Smer</th></tr>
+    {% for r in rows %}
+      <tr><td>{{ r.counterparty }}</td><td>{{ r.note }}</td><td>{{ r.direction }}</td></tr>
+    {% else %}
+      <tr><td colspan="3"><em>Ziadne vysledky.</em></td></tr>
+    {% endfor %}
+  </table>
+{% endblock %}
