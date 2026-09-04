@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Export - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Export vypisu do PDF</h1>
+  <form method="get">
+    <label>Nazov suboru<br><input name="name" value="{{ name }}" size="50"></label>
+    <button type="submit">Exportovat</button>
+  </form>
+  <h3>Vystup exportu</h3>
+  <pre style="background:#111;color:#3f3;padding:10px;overflow:auto">{{ output }}</pre>
+{% endblock %}

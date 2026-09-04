@@ -52,25 +52,26 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    networks:
+      - default
+      - exporter_isolated
 
-# -----------------------------------------------------------------------------
-# W1-05 exporter (added at Week 1): the ONLY container that yields a shell.
-# It sits on an internal:true network (no internet, no route to db/ollama),
-# holds ONLY FLAG_W1_05, drops all caps. `web` also joins that network so it can
-# proxy the filename to it; the exporter itself can reach nothing else.
-# Kept commented until Week 1 so `up` works with just web+db right now.
-#
-#  exporter:
-#    build: ./exporter          # python:3.12 (full image: has bash/cat/ls/id)
-#    environment:
-#      FLAG_W1_05: ${FLAG_W1_05:-RPC{unset_w1_05}}
-#    networks: [exporter_isolated]
-#    cap_drop: [ALL]
-#    read_only: true
-#
-# (web would then also get:  networks: [default, exporter_isolated])
-#
-# networks:
-#   exporter_isolated:
-#     internal: true
-# -----------------------------------------------------------------------------
+  # W1-05 exporter: the ONLY container that yields a shell. Isolated on an
+  # internal (no-egress) network with no route to db/ollama, cap_drop:ALL, and
+  # only FLAG_W1_05 in its env. `web` also joins exporter_isolated to proxy the
+  # filename; the exporter itself can reach nothing else.
+  exporter:
+    build: ./exporter
+    environment:
+      FLAG_W1_05: ${FLAG_W1_05:-RPC{unset_w1_05}}
+    networks:
+      - exporter_isolated
+    cap_drop:
+      - ALL
+    # read_only omitted: the entrypoint writes /flag at startup. Isolation is
+    # enforced by cap_drop:ALL + the internal network (no egress, no db/ollama).
+
+networks:
+  # `default` is auto-created for db/web (has outbound). exporter is NOT on it.
+  exporter_isolated:
+    internal: true

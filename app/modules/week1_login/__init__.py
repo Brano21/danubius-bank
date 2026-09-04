@@ -111,3 +111,5 @@ def logout():
 
 # W1-03 stored XSS lives in its own bounded file, registered on this blueprint.
 from . import w1_03_stored_xss  # noqa: E402,F401
+# W1-05 export proxy (the OS-injection vuln itself is in the exporter service).
+from . import w1_05_export  # noqa: E402,F401
