@@ -1,0 +1,27 @@
+diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
+index 87e6bf6..b1b2ea1 100644
+--- a/app/modules/week1_login/__init__.py
++++ b/app/modules/week1_login/__init__.py
+@@ -68,17 +68,13 @@ def transactions():
+     )
+     acct_id = acct["id"] if acct else 0
+     q = request.args.get("q", "")
+-    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
+-    # concatenated into the query, so a UNION SELECT appends rows from another
+-    # table - e.g. cards - leaking card numbers. The visible columns are all
+-    # text, so a working UNION needs three text columns.
+-    sql = (
++    # FIX W1-02: parameterized query; the search term is bound as a value, so a
++    # UNION cannot be injected (account_id is a trusted int from the session).
++    rows = fetch_all(
+         "SELECT counterparty, note, direction FROM transactions "
+-        "WHERE account_id = " + str(acct_id) + " "
+-        "AND counterparty ILIKE '%" + q + "%' "
+-        "ORDER BY ts DESC"
++        "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
++        (acct_id, "%" + q + "%"),
+     )
+-    rows = fetch_all(sql)
+     return render_template("transactions.html", rows=rows, q=q, client=client)
+ 
+ 

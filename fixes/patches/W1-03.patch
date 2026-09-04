@@ -1,0 +1,9 @@
+diff --git a/app/templates/_admin_note.html b/app/templates/_admin_note.html
+index 21bfee0..dba609a 100644
+--- a/app/templates/_admin_note.html
++++ b/app/templates/_admin_note.html
+@@ -1 +1 @@
+-{{ note | safe }}
+\ No newline at end of file
++{{ note }}{# FIX W1-03: escape output (autoescape), no |safe #}
+\ No newline at end of file

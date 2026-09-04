@@ -1,0 +1,20 @@
+diff --git a/app/modules/week2_api/w2_03_mass_assignment.py b/app/modules/week2_api/w2_03_mass_assignment.py
+index 818b194..8e47214 100644
+--- a/app/modules/week2_api/w2_03_mass_assignment.py
++++ b/app/modules/week2_api/w2_03_mass_assignment.py
+@@ -11,11 +11,10 @@ CLIENT_EDITABLE = {"full_name", "email", "phone"}   # what SHOULD be allowed
+ @tokens.require_token
+ def patch_profile(ident):
+     body = request.get_json(silent=True) or request.form.to_dict()
+-    # VULN: W2-03 mass assignment (A01/A06 Insecure Design). The whole request
+-    # body is applied to the (per-session) profile with no allowlist, so
+-    # privileged fields such as `role` or `account_limit` - which are NOT in
+-    # CLIENT_EDITABLE - can be set by the client.
+-    tokens.set_override(ident["sid"], dict(body))
++    # FIX W2-03: apply only client-editable fields (allowlist). Privileged
++    # fields like `role`/`account_limit` are ignored, closing the escalation.
++    allowed = {k: v for k, v in body.items() if k in CLIENT_EDITABLE}
++    tokens.set_override(ident["sid"], allowed)
+     return jsonify(updated=list(body.keys()),
+                    profile=tokens.get_override(ident["sid"]),
+                    effective_role=tokens.effective_role(ident))

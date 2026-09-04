@@ -1,0 +1,33 @@
+diff --git a/app/modules/week3_llm/w3_04_agency.py b/app/modules/week3_llm/w3_04_agency.py
+index 87e90c6..9cdf7a0 100644
+--- a/app/modules/week3_llm/w3_04_agency.py
++++ b/app/modules/week3_llm/w3_04_agency.py
+@@ -28,22 +28,21 @@ TOOLS = [{
+ }]
+ 
+ 
+-def get_balance(account_id=None, **_):
+-    # VULN: W3-04 excessive agency (LLM06). The tool has NO authorization: it
+-    # returns ANY account's balance, so the assistant can be asked to read a
+-    # foreign account. For the VIP target it returns FLAG_W3-04.
++def get_balance(account_id=None, caller_accounts=None, **_):
++    # FIX W3-04: least privilege for tools. The tool is scoped to the
++    # authenticated caller's own accounts; an arbitrary account_id from the
++    # model is rejected, so it can never reach a foreign/privileged account.
+     try:
+         account_id = int(account_id)
+     except (TypeError, ValueError):
+         return {"error": "neplatne cislo uctu"}
++    if account_id not in set(caller_accounts or []):
++        return {"account_id": account_id, "error": "pristup zamietnuty"}
+     row = fetch_one(
+         "SELECT balance::text AS balance FROM accounts WHERE id = %s", (account_id,)
+     )
+     if not row:
+         return {"account_id": account_id, "error": "ucet neexistuje"}
+-    if account_id == VIP_ACCOUNT_ID:
+-        return {"account_id": account_id, "balance": get_flag("W3-04"),
+-                "note": "privatny VIP ucet"}
+     return {"account_id": account_id, "balance": row["balance"]}
+ 
+ 

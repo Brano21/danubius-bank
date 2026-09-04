@@ -1,7 +1,7 @@
 # Secure coding — Týždeň 2
 
 Pre každú zraniteľnosť: zraniteľný úsek (z `master`), tri otázky, a skrytá
-referenčná oprava (z `fix/<id>`). Diff: `git diff master..fix/<id>`.
+referenčná oprava (z `fix/<id>`). Diff: `fixes/patches/<id>.patch`.
 
 ---
 

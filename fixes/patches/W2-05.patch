@@ -1,0 +1,23 @@
+diff --git a/app/modules/week2_api/w2_05_error_leak.py b/app/modules/week2_api/w2_05_error_leak.py
+index 4a6a999..42bca15 100644
+--- a/app/modules/week2_api/w2_05_error_leak.py
++++ b/app/modules/week2_api/w2_05_error_leak.py
+@@ -15,15 +15,6 @@ def statements(ident):
+         acc_id = int(account)   # non-numeric input raises -> "unhandled"
+         return jsonify(account=acc_id, statement=[])
+     except Exception:
+-        # VULN: W2-05 Mishandling of Exceptional Conditions (A10). The error
+-        # response leaks a full stack trace AND internal config, including a
+-        # database connection string whose "password" is FLAG_W2-05.
+-        dsn = "postgresql://danubius:" + get_flag("W2-05") + "@db:5432/danubius"
+-        return jsonify(
+-            error="internal server error",
+-            trace=traceback.format_exc(),
+-            config={
+-                "SQLALCHEMY_DATABASE_URI": dsn,
+-                "internal_path": "/srv/app/modules/week2_api/w2_05_error_leak.py",
+-            },
+-        ), 500
++        # FIX W2-05: return a generic error to the client; the detail belongs in
++        # server-side logs only. No stack trace, no connection string, no paths.
++        return jsonify(error="internal server error"), 500
