@@ -1,5 +1,5 @@
 diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
-index e11ef30..2429983 100644
+index 05df309..f82e2be 100644
 --- a/app/modules/week1_login/__init__.py
 +++ b/app/modules/week1_login/__init__.py
 @@ -28,19 +28,12 @@ def login():

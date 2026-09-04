@@ -1,20 +1,20 @@
 diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
-index e11ef30..09b9fd3 100644
+index 05df309..72007d6 100644
 --- a/app/modules/week1_login/__init__.py
 +++ b/app/modules/week1_login/__init__.py
-@@ -110,17 +110,13 @@ def transactions():
+@@ -116,17 +116,13 @@ def transactions():
      )
      acct_id = acct["id"] if acct else 0
      q = request.args.get("q", "")
 -    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
 -    # concatenated into the query, so a UNION SELECT appends rows from another
--    # table - e.g. cards - leaking card numbers. The visible columns are all
--    # text, so a working UNION needs three text columns.
+-    # table - e.g. cards - leaking card numbers. The visible columns are text
+-    # (amount is cast to text), so a working UNION needs four text columns.
 -    sql = (
 +    # FIX W1-02: parameterized query; the search term is bound as a value, so a
 +    # UNION cannot be injected (account_id is a trusted int from the session).
 +    rows = fetch_all(
-         "SELECT counterparty, note, direction FROM transactions "
+         "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
 -        "WHERE account_id = " + str(acct_id) + " "
 -        "AND counterparty ILIKE '%" + q + "%' "
 -        "ORDER BY ts DESC"

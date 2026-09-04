@@ -45,7 +45,7 @@ treats the symptom rather than the mixing of code and data.
 ### Vulnerable snippet — `app/modules/week1_login/__init__.py`
 ```python
 sql = (
-    "SELECT counterparty, note, direction FROM transactions "
+    "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
     "WHERE account_id = " + str(acct_id) + " "
     "AND counterparty ILIKE '%" + q + "%' "
     "ORDER BY ts DESC"
@@ -62,7 +62,7 @@ rows = fetch_all(sql)
 
 ```python
 rows = fetch_all(
-    "SELECT counterparty, note, direction FROM transactions "
+    "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
     "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
     (acct_id, "%" + q + "%"),
 )
