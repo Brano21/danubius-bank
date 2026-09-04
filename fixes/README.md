@@ -1,20 +1,20 @@
 # Referenčné opravy
 
-Hlavná vetva `main` je plne zraniteľná. Ku každej zraniteľnosti existuje vetva
-`fix/<id>` s **jediným** commitom — diff medzi `main` a `fix/<id>` JE referenčná
+Hlavná vetva `master` je plne zraniteľná. Ku každej zraniteľnosti existuje vetva
+`fix/<id>` s **jediným** commitom — diff medzi `master` a `fix/<id>` JE referenčná
 oprava. Vetva `fixes` obsahuje všetky opravy naraz.
 
 Oprava sa dá zobraziť takto:
 
 ```bash
-git diff main..fix/W1-01           # jedna oprava
+git diff master..fix/W1-01           # jedna oprava
 git log --oneline fix/W2-03        # commit opravy
-git diff main..fixes -- app/       # všetky opravy naraz
+git diff master..fixes -- app/       # všetky opravy naraz
 ```
 
 Každá oprava je **overená** regresným balíkom: na `fix/<id>` daný test v
 `tests/run_tests.py` prejde z PASS na FAIL (zraniteľnosť je zavretá), ostatné
-ostanú PASS. Na `main` prechádzajú všetky.
+ostanú PASS. Na `master` prechádzajú všetky.
 
 | ID | Vetva | Podstata opravy | Stav |
 |----|-------|-----------------|------|

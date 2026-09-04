@@ -110,6 +110,6 @@ danubius-bank/
 
 ## Referenčné opravy
 
-`main` je plne zraniteľná. Ku každej zraniteľnosti existuje vetva `fix/<id>` s
-jediným commitom; diff `main` ↔ `fix/<id>` je referenčná oprava. Pozri
+`master` je plne zraniteľná. Ku každej zraniteľnosti existuje vetva `fix/<id>` s
+jediným commitom; diff `master` ↔ `fix/<id>` je referenčná oprava. Pozri
 [fixes/README.md](fixes/README.md) a `secure-coding/weekN.md`.

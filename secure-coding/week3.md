@@ -4,7 +4,7 @@ Kľúčová myšlienka celého týždňa: **systémový prompt nie je bezpečnos
 hranica.** Čokoľvek, čo model „vie" (má v kontexte), sa dá z neho dostať. Filtre
 sú defense-in-depth, nie primárna ochrana; nástroje musia mať least privilege.
 
-Diff opráv: `git diff main..fix/<id>`.
+Diff opráv: `git diff master..fix/<id>`.
 
 ---
 
