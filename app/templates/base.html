@@ -49,6 +49,10 @@
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px;margin-top:18px}
     .tile{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
     .tile:hover{border-color:var(--accent);box-shadow:0 3px 10px rgba(31,122,224,.12);text-decoration:none}
+    /* static, non-clickable marketing blocks (no hover/pointer affordance) */
+    .feature{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:16px}
+    .feature .t{font-weight:700;color:var(--text)}
+    .feature .d{color:var(--muted);font-size:.85rem;margin-top:4px}
     .tile .t{font-weight:700;color:var(--text)}
     .tile .d{color:var(--muted);font-size:.85rem;margin-top:4px}
     .muted{color:var(--muted)}
