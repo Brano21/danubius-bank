@@ -1,87 +1,88 @@
-# Site mapa — Danubius Bank CTF
+# Site map — Danubius Bank CTF
 
-Orientácia: čo kde je, čo je **reálna funkcia**, čo **terč úlohy**, čo **nástroj
-útočníka**, a aká autentifikácia treba.
+Orientation: what is where, what is a **real feature**, a **task target**, an
+**attacker tool**, and what authentication is required.
 
-## Vrstvy / služby (docker-compose)
+## Layers / services (docker-compose)
 
 ```
-prehliadač
-   │  :8080 (jediné publikované)
+browser
+   │  :8080 (only published port)
    ▼
-[ gate ]  ── prihlásenie hráča + logovanie + admin dashboard (mimo zraniteľnej appky)
-   │  interná sieť (proxy)
+[ gate ]  ── player sign-in + logging + operator dashboard (outside the vulnerable app)
+   │  internal network (proxy)
    ▼
-[ web ]  ── Flask "Danubius Bank" (zraniteľná appka)
-   ├── [ db ]        PostgreSQL (interná)
-   ├── [ ollama ]    LLM model pre Danubku (interná, W3)
-   └── [ exporter ]  izolovaný kontajner pre W1-05 (internal sieť, cap_drop:ALL)
+[ web ]  ── Flask "Danubius Bank" (the vulnerable app)
+   ├── [ db ]        PostgreSQL (internal)
+   ├── [ ollama ]    LLM model for Danubka (internal, W3)
+   └── [ exporter ]  isolated container for W1-05 (internal net, cap_drop:ALL)
 ```
 
-## 1) Brána — `/_gate/*` (bezpečnostná vrstva, NIE terč)
+## 1) Gate — `/_gate/*` (security layer, NOT a target)
 
-| Cesta | Čo to je | Auth |
-|-------|----------|------|
-| `/_gate/login` | Prihlásenie hráča (jediné silné prihlásenie pred Danubiusom; 7-dňový token) | verejné |
-| `/_gate/logout` | Odhlásenie (netreba používať) | hráč |
-| `/_gate/admin/login` | Prihlásenie operátora | verejné |
-| `/_gate/admin` | **Live dashboard** — aktivita hráčov (monitoring) | admin |
+| Path | What it is | Auth |
+|------|------------|------|
+| `/_gate/login` | Player sign-in (the single strong login in front of Danubius; 7-day token) | public |
+| `/_gate/logout` | Sign out (not needed) | player |
+| `/_gate/admin/login` | Operator sign-in | public |
+| `/_gate/admin` | **Live dashboard** — player activity (monitoring) | admin |
 
-> Bez gate prihlásenia je **všetko** nižšie neprístupné (redirect na `/_gate/login`).
+> Without a gate sign-in, **everything** below is inaccessible (redirect to `/_gate/login`).
 
-## 2) Danubius web — verejná časť (po bráne, pred bankovým loginom)
+## 2) Danubius web — public part (behind the gate, before the bank login)
 
-| Cesta | Čo to je | Úloha |
-|-------|----------|-------|
-| `/` | Landing (marketing) / po bank-logine portál-domov | — |
-| `/login` | **Bankový login** | **terč W1-01** (SQLi bypass) |
-| `/register` | **Registrácia** (email + 2× heslo, bez overenia mailu; účet sa uloží) | reálna funkcia (surface na testovanie) |
-| `/collector` | Pomôcka: zadaj token → tvoj collector | nástroj útočníka (W1-03) |
-| `/w1-03/collect/<token>` | Collector útočníka (zachytené dáta) | nástroj útočníka (W1-03) |
+| Path | What it is | Task |
+|------|------------|------|
+| `/` | Landing (marketing) / portal home after login | — |
+| `/login` | **Bank login** | **target W1-01** (SQLi bypass) |
+| `/register` | **Registration** (email + 2× password, no verification; account saved) | real feature (surface for testing) |
+| `/collector` | Helper: enter a token → your collector | attacker tool (W1-03) |
+| `/w1-03/collect/<token>` | Attacker collector (captured data) | attacker tool (W1-03) |
 
-## 3) Danubius web — portál (po bankovom logine)
+## 3) Danubius web — portal (after the bank login)
 
-| Cesta | Čo to je | Úloha |
-|-------|----------|-------|
-| `/dashboard` | Prehľad účtu | **flag W1-01** sa tu zobrazí (klient id 1) |
-| `/transactions` | Vyhľadávanie v transakciách | **terč W1-02** (UNION SQLi) |
-| `/search` | Vyhľadávanie na stránke (za loginom) | **terč W1-04** (Reflected XSS) |
-| `/search/solved` | Mechanika W1-04 — vyžaduje nonce zo stránky (holý GET nedá flag) | (W1-04) |
-| `/transfer` | Nový prevod (pole *Poznámka*) | **terč W1-03** (Stored XSS) |
-| `/w1-03/report/<id>` | „Nahlásiť adminovi" → emulovaný admin | mechanika W1-03 |
-| `/admin/review` | Admin kontrola prevodov (render poznámky **bez escapovania**) | **sink W1-03**; len rola `admin` |
-| `/export` | Export výpisu do PDF (proxy na exporter) | **terč W1-05** (OS injection) |
-| `/logout` | Odhlásenie z banky | — |
+| Path | What it is | Task |
+|------|------------|------|
+| `/dashboard` | Account overview | **flag W1-01** shown here (client id 1) |
+| `/transactions` | Transaction search | **target W1-02** (UNION SQLi) |
+| `/search` | Site search (behind login) | **target W1-04** (Reflected XSS) |
+| `/search/solved` | W1-04 mechanism — needs a page nonce (bare GET gives no flag) | (W1-04) |
+| `/transfer` | New transfer (*Note* field) | **target W1-03** (Stored XSS) |
+| `/w1-03/report/<id>` | "Report to admin" → emulated admin | W1-03 mechanism |
+| `/admin/review` | Admin transfer review (renders the note **unescaped**) | **sink W1-03**; admin role only |
+| `/export` | Statement export to PDF (proxied to the exporter) | **target W1-05** (OS injection) |
+| `/logout` | Sign out of the bank | — |
 
 ## 4) REST API — `/api/v1/*` (WEEK ≥ 2, token auth)
 
-| Cesta | Metóda | Úloha |
-|-------|--------|-------|
-| `/api/v1/login` | POST | vydá token (rovnaká injekcia ako W1-01) |
-| `/api/v1/me` | GET | info o tokene |
+| Path | Method | Task |
+|------|--------|------|
+| `/api/v1/login` | POST | issues a token (same injection as W1-01) |
+| `/api/v1/me` | GET | token info |
 | `/api/v1/accounts/{id}/transactions` | GET | **W2-01 BOLA** |
 | `/api/v1/admin/cards/{id}/unblock` | POST | **W2-02 BFLA** |
 | `/api/v1/profile` | PATCH | **W2-03 mass assignment** |
-| `/api/v1/admin/portal` | GET | overí rolu → flag (W2-03) |
-| `/api/v1/transfers` | POST | **W2-04 fraud bypass** (mena) |
-| `/api/v1/statements` | GET | **W2-05 error leak** (nenumerický `account`) |
+| `/api/v1/admin/portal` | GET | checks the role → flag (W2-03) |
+| `/api/v1/transfers` | POST | **W2-04 fraud bypass** (currency) |
+| `/api/v1/statements` | GET | **W2-05 error leak** (non-numeric `account`) |
 
-## 5) Asistent Danubka — `/assistant/*` (WEEK ≥ 3, za bránou)
+## 5) Danubka assistant — `/assistant/*` (WEEK ≥ 3, behind the gate)
 
-| Cesta | Čo to je | Úloha |
-|-------|----------|-------|
-| `/assistant/` | Chat s Danubkou | **W3-01** priama injekcia |
-| `/assistant/secure` | „Bezpečný režim" (chránený údaj) | **W3-02** obídenie mlčania |
-| `/assistant/summarize` | Zhrnutie dokumentu | **W3-03** nepriama injekcia |
-| `/assistant/agent` | Agent s nástrojom `get_balance` | **W3-04** excessive agency |
+| Path | What it is | Task |
+|------|------------|------|
+| `/assistant/` | Chat with Danubka | **W3-01** direct injection |
+| `/assistant/secure` | "Secure mode" (protected value) | **W3-02** secrecy bypass |
+| `/assistant/summarize` | Document summary | **W3-03** indirect injection |
+| `/assistant/agent` | Agent with the `get_balance` tool | **W3-04** excessive agency |
 
-## Odomykanie po týždňoch (`WEEK`)
-- `WEEK=1` → časti 2 a 3 (web, W1)
+## Weekly unlocking (`WEEK`)
+- `WEEK=1` → sections 2 and 3 (web, W1)
 - `WEEK=2` → + API (4, W2)
 - `WEEK=3` → + Danubka (5, W3)
-Uzamknutý týždeň **nie je zaregistrovaný** — jeho cesty neexistujú.
 
-## Legenda
-- **terč úlohy** = zámerne zraniteľné miesto (rieši sa v CTF)
-- **nástroj útočníka** = pomôcka na exploit (nie funkcia banky) — napr. collector
-- **reálna bezpečnosť** = len brána (`/_gate/*`); bankový `/login` je terč, nie ochrana
+A locked week is **not registered** — its paths do not exist.
+
+## Legend
+- **task target** = the intentionally vulnerable spot (solved in the CTF)
+- **attacker tool** = an exploit helper (not a bank feature) — e.g. the collector
+- **real security** = only the gate (`/_gate/*`); the bank `/login` is a target, not a control

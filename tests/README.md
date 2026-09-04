@@ -1,28 +1,29 @@
-# Regresné testy (W1–W3)
+# Regression tests (W1–W3)
 
-Overujú, že zraniteľnosti **stále fungujú** (flag je stále dosiahnuteľný cez daný
-exploit). Spusti po každej zmene, aby si zachytil, že si niečo nepokazil.
+They verify that the vulnerabilities **still work** (the flag is still reachable
+via each exploit). Run them after any change to catch that you broke something.
 
-Testy idú **cez bránu** (ako reálny hráč), takže zároveň overujú, že brána
-exploity nerozbila.
+The tests go **through the gate** (as a real player), so they also confirm the
+gate did not break the exploits.
 
-## Spustenie
+## Run
+
 ```bash
-# appka musí bežať (docker compose up); ideálne WEEK=3, nech sú W2/W3 odomknuté
-python tests/run_tests.py             # W1 (+ W2/W3 ak sú odomknuté)
-python tests/run_tests.py --with-llm  # aj W3 (pomalé, LLM je nedeterministický)
+# the app must be running (docker compose up); ideally WEEK=3 so W2/W3 are unlocked
+python tests/run_tests.py             # W1 (+ W2/W3 if unlocked)
+python tests/run_tests.py --with-llm  # also W3 (slow, the LLM is nondeterministic)
 ```
 
-- **W1/W2** sú deterministické a rozhodujú o exit kóde (`0` = OK, `1` = zlyhanie).
-- **W3** je best-effort (LLM) — reportuje sa, retry-uje, ale nezhodí suite.
+- **W1/W2** are deterministic and decide the exit code (`0` = OK, `1` = failure).
+- **W3** is best-effort (LLM) — reported and retried, but never fails the suite.
 
-Žiadne závislosti — čistá štandardná knižnica Pythonu 3.
+No dependencies — pure Python 3 standard library.
 
-## Konfigurácia (env premenné)
+## Configuration (env vars)
 - `BASE_URL` (default `http://localhost:8080`)
-- `GATE_USER` / `GATE_PASS` (default `tester` / `test123` z `gate/players.json`)
+- `GATE_USER` / `GATE_PASS` (default `tester` / `test123` from `gate/players.json`)
 
-## Použitie pri opravách
-Po aplikovaní opravy na vetve `fix/<id>` sa príslušný test má **zmeniť na FAIL**
-(oprava zavrie zraniteľnosť) — to je očakávané a potvrdzuje, že oprava účinkuje.
-Na vetve `main` musia prejsť všetky (deterministické).
+## Use during fixing
+After applying a fix from `fixes/patches/<id>.patch`, the matching test should
+flip to **FAIL** (the fix closes the vulnerability) — that is expected and
+confirms the fix works. On a clean `master`, all (deterministic) tests pass.

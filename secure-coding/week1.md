@@ -1,13 +1,13 @@
-# Secure coding — Týždeň 1
+# Secure coding — Week 1
 
-Pre každú zraniteľnosť: zraniteľný úsek (z `master`), tri otázky, a skrytá
-referenčná oprava (z `fix/<id>`). Diff zobrazíš cez `fixes/patches/<id>.patch`.
+For each vulnerability: the vulnerable snippet (from `master`), three questions,
+and a hidden reference fix (`fixes/patches/<id>.patch`).
 
 ---
 
 ## W1-01 — SQL injection: login bypass (A05 Injection)
 
-### Zraniteľný úsek — `app/modules/week1_login/__init__.py`
+### Vulnerable snippet — `app/modules/week1_login/__init__.py`
 ```python
 sql = (
     "SELECT id FROM clients WHERE username = '"
@@ -19,12 +19,12 @@ sql = (
 row = fetch_one(sql)
 ```
 
-### Otázky
-1. Kde presne je diera?
-2. Prečo to prejde bežnou obranou (WAF, validácia dĺžky hesla na frontende)?
-3. Ako by si to opravil?
+### Questions
+1. Where exactly is the flaw?
+2. Why does it pass a common defense (WAF, front-end password-length validation)?
+3. How would you fix it?
 
-<details><summary>Referenčná oprava (fix/W1-01)</summary>
+<details><summary>Reference fix (fixes/patches/W1-01.patch)</summary>
 
 ```python
 row = fetch_one(
@@ -32,17 +32,17 @@ row = fetch_one(
     (username, password),
 )
 ```
-Vstup ide do dotazu ako **dáta**, nie ako súčasť SQL textu, takže nemôže zmeniť
-štruktúru dotazu. **Nesprávna oprava** (blacklist — filtrovanie `'` alebo slova
-`OR`) prehliadne kódované payloady, `--`/`#` komentáre, iné operátory a rieši len
-symptóm, nie miešanie kódu a dát.
+Input reaches the query as **data**, never as part of the SQL text, so it cannot
+change the query structure. A **wrong fix** (a blacklist — filtering `'` or the
+word `OR`) misses encoded payloads, `--`/`#` comments, other operators, and
+treats the symptom rather than the mixing of code and data.
 </details>
 
 ---
 
-## W1-02 — SQL injection: UNION únik kariet (A05 Injection)
+## W1-02 — SQL injection: UNION card leak (A05 Injection)
 
-### Zraniteľný úsek — `app/modules/week1_login/__init__.py`
+### Vulnerable snippet — `app/modules/week1_login/__init__.py`
 ```python
 sql = (
     "SELECT counterparty, note, direction FROM transactions "
@@ -53,12 +53,12 @@ sql = (
 rows = fetch_all(sql)
 ```
 
-### Otázky
-1. Kde presne je diera a prečo práve `UNION SELECT`?
-2. Prečo escapovanie `%` alebo úvodzoviek v `q` nestačí?
-3. Ako by si to opravil?
+### Questions
+1. Where is the flaw, and why `UNION SELECT` specifically?
+2. Why is escaping `%` or quotes in `q` not enough?
+3. How would you fix it?
 
-<details><summary>Referenčná oprava (fix/W1-02)</summary>
+<details><summary>Reference fix (fixes/patches/W1-02.patch)</summary>
 
 ```python
 rows = fetch_all(
@@ -67,80 +67,79 @@ rows = fetch_all(
     (acct_id, "%" + q + "%"),
 )
 ```
-Parametrizácia hodnoty `q` (aj s `%` wildcardmi). **Nesprávna oprava** —
-blokovať slovo `UNION` — sa obíde komentármi/inline (`UNI/**/ON`), zmenou
-veľkosti písmen, alebo iným typom injekcie (boolean/time-based).
+Parameterize the `q` value (including the `%` wildcards). A **wrong fix** —
+blocking the word `UNION` — is bypassed with comments/inline (`UNI/**/ON`), case
+changes, or a different injection type (boolean/time-based).
 </details>
 
 ---
 
-## W1-03 — Stored XSS v poznámke k prevodu (A03 / Injection)
+## W1-03 — Stored XSS in a transfer note (A03 / Injection)
 
-### Zraniteľný úsek — `app/templates/_admin_note.html` (partial admin pohľadu)
+### Vulnerable snippet — `app/templates/_admin_note.html` (admin-view partial)
 ```jinja
 {{ note | safe }}
 ```
-Poznámka od používateľa sa v administrátorskom pohľade renderuje `| safe`, teda
-**bez escapovania**. Emulovaný admin „spustí" payload len ak by ho reálny
-prehliadač spustil (neescapovaný `<script>`/`on*=`) — preto escapovanie výstupu
-zraniteľnosť reálne zatvára.
+The user's note is rendered `| safe` — **without escaping** — in the admin view.
+The emulated admin "runs" the payload only if a real browser would (unescaped
+`<script>`/`on*=`), so escaping the output truly closes the vulnerability.
 
-### Otázky
-1. Prečo je problém výstup, a nie vstup (prečo neblokovať `<script>` pri ukladaní)?
-2. Kde všade sa tá istá poznámka zobrazuje a kde treba escapovať?
-3. Ako by si to opravil?
+### Questions
+1. Why is the output the problem, not the input (why not block `<script>` on save)?
+2. Where else is the same note shown, and where must you escape?
+3. How would you fix it?
 
-<details><summary>Referenčná oprava (fix/W1-03)</summary>
+<details><summary>Reference fix (fixes/patches/W1-03.patch)</summary>
 
 ```jinja
 {{ note }}
 ```
-Escapovanie výstupu (Jinja autoescape) — `<`, `>`, `&`, `"` sa zakódujú, takže
-payload sa zobrazí ako text a nespustí. **Nesprávna oprava** — filtrovať vstup
-(blacklist `<script>`) — sa obíde (`<img onerror>`, `<svg onload>`, kódovanie) a
-láme dáta; escapuje sa **na výstupe**, kontextovo.
+Escape the output (Jinja autoescape) — `<`, `>`, `&`, `"` are encoded, so the
+payload is shown as text and does not run. A **wrong fix** — input filtering
+(blacklisting `<script>`) — is bypassed (`<img onerror>`, `<svg onload>`,
+encoding) and mangles data; escape **on output**, contextually.
 </details>
 
 ---
 
-## W1-04 — Reflected XSS vo vyhľadávaní (A05 / XSS)
+## W1-04 — Reflected XSS in search (A05 / XSS)
 
-### Zraniteľný úsek — `app/templates/search.html`
+### Vulnerable snippet — `app/templates/search.html`
 ```jinja
-<p>Vysledky pre: {{ q | safe }}</p>
+<p>Results for: {{ q | safe }}</p>
 ```
 
-### Otázky
-1. V čom sa reflected líši od stored XSS z W1-03?
-2. Prečo `| safe` tu nemá čo hľadať?
-3. Ako by si to opravil?
+### Questions
+1. How does reflected differ from the stored XSS in W1-03?
+2. Why does `| safe` have no place here?
+3. How would you fix it?
 
-<details><summary>Referenčná oprava (fix/W1-04)</summary>
+<details><summary>Reference fix (fixes/patches/W1-04.patch)</summary>
 
 ```jinja
-<p>Vysledky pre: {{ q }}</p>
+<p>Results for: {{ q }}</p>
 ```
-Odstránenie `| safe` → hodnota sa escapuje. **Nesprávna oprava** — escapovať len
-`<` — prehliadne atribútové a JS kontexty; treba **kontextové** escapovanie na
-výstupe (Jinja autoescape to rieši pre HTML kontext).
+Removing `| safe` escapes the value. A **wrong fix** — escaping only `<` — misses
+attribute and JS contexts; you need **contextual** output escaping (Jinja
+autoescape handles the HTML context).
 </details>
 
 ---
 
-## W1-05 — OS command injection v exporte (A05 Injection)
+## W1-05 — OS command injection in export (A05 Injection)
 
-### Zraniteľný úsek — `exporter/app.py`
+### Vulnerable snippet — `exporter/app.py`
 ```python
-cmd = "echo 'Priprava PDF exportu vypisu ...'; ls -la /srv/exports/" + name
+cmd = "echo 'Preparing PDF statement export ...'; ls -la /srv/exports/" + name
 out = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
 ```
 
-### Otázky
-1. Prečo je `shell=True` s konkatenáciou nebezpečné?
-2. Prečo escapovanie shellu (úvodzovky okolo `name`) nie je spoľahlivé riešenie?
-3. Ako by si to opravil?
+### Questions
+1. Why is `shell=True` with concatenation dangerous?
+2. Why is shell escaping (quotes around `name`) not a reliable fix?
+3. How would you fix it?
 
-<details><summary>Referenčná oprava (fix/W1-05)</summary>
+<details><summary>Reference fix (fixes/patches/W1-05.patch)</summary>
 
 ```python
 out = subprocess.run(
@@ -148,9 +147,8 @@ out = subprocess.run(
     shell=False, capture_output=True, text=True, timeout=10,
 )
 ```
-Bez shellu; `name` je **jeden argv prvok**, takže `;`, `|`, `` ` ``, `&&` sú
-obyčajný text, nie príkazy. **Nesprávna oprava** — obaliť `name` do úvodzoviek v
-shell reťazci — sa obíde (`$(...)`, `` ` ``, escapované úvodzovky). Navyše vhodné
-validovať názov (napr. `os.path.basename`, allowlist znakov) proti path
-traversal.
+No shell; `name` is a **single argv element**, so `;`, `|`, `` ` ``, `&&` are
+plain text, not commands. A **wrong fix** — wrapping `name` in quotes inside a
+shell string — is bypassed (`$(...)`, `` ` ``, escaped quotes). Also validate the
+name (e.g. `os.path.basename`, an allowlist of characters) against path traversal.
 </details>

@@ -1,136 +1,140 @@
 # Danubius Bank — CTF target
 
-Zámerne zraniteľná banková webová aplikácia pre interný, 4-týždňový CTF /
-secure-coding tréning. **Nikdy nenasadzuj do produkčnej ani zdieľanej siete.**
+An intentionally vulnerable banking web app for an internal, 4-week CTF /
+secure-coding training. **Never deploy it to a production or shared network.**
 
-> Stav: **W1–W3 hotové** — 14 zraniteľností, realistické bankové UX, bezpečná
-> brána + operátorský dashboard, regresné testy. Týždne sa odomykajú cez `WEEK`
-> (1–4). Week 4 (blue-team) je zatiaľ odložený.
+> Status: **W1–W3 done** — 14 vulnerabilities, realistic bank UX, a secure access
+> gate + operator dashboard, and regression tests. Weeks unlock via `WEEK` (1–4).
+> Week 4 (blue-team) is deferred for now.
 
-## Rýchly štart
+## Quick start
+
+Prerequisites: **Docker Desktop** (running), ~16 GB RAM (for Ollama in week 3).
 
 ```bash
-cp .env.example .env                  # uprav flagy / heslá podľa behu
-WEEK=3 docker compose up --build      # brána na http://localhost:8080
+cp .env.example .env                  # adjust flags / passwords for your run
+WEEK=3 docker compose up --build      # gate on http://localhost:8080
 ```
 
-## Predvolené prihlásenie
+## Default login
 
-Aplikácia beží **za bránou** (`http://localhost:8080`). Predvolené (demo) údaje:
+The app runs **behind a gate** (`http://localhost:8080`). Demo credentials:
 
-| Kde | Meno | Heslo |
-|-----|------|-------|
-| **Brána — vstup pre hráča** | `tester` | `test123` |
+| Where | User | Password |
+|-------|------|----------|
+| **Gate — player entrance** | `tester` | `test123` |
 | | `hrac1` | `danubius1` |
 | | `hrac2` | `danubius2` |
-| **Operátor / dashboard** (`/_gate/admin`) | `admin` | `change-me-admin` |
+| **Operator / dashboard** (`/_gate/admin`) | `admin` | `change-me-admin` |
 
-- Hráčske účty sa spravujú v `gate/players.json`; admin v `.env`
+- Player accounts are managed in `gate/players.json`; the admin in `.env`
   (`GATE_ADMIN_USER` / `GATE_ADMIN_PASSWORD`).
-- **Do samotnej banky** sa hráč po vstupe cez bránu dostane zraniteľnosťou
-  **W1-01** (SQLi login bypass): meno `' OR '1'='1'-- `, heslo hocijaké.
-  Seedované bankové účty (v `seed/seed.sql`) sú *ciele* úloh, nie prihlásenie.
+- **To get into the bank itself**, a player either **registers** (`/register` —
+  email + password, the email is not verified) or uses **W1-01** (SQLi login
+  bypass): username `' OR '1'='1'-- `, any password.
 
-> ⚠️ **Pred ostrým behom zmeň všetky heslá:** `GATE_ADMIN_PASSWORD`,
-> `GATE_SECRET`, hráčske účty v `gate/players.json` aj DB heslo.
+> ⚠️ **Before a real run, change every password:** `GATE_ADMIN_PASSWORD`,
+> `GATE_SECRET`, the player accounts in `gate/players.json`, and the DB password.
 
-## Reset do čistého zraniteľného stavu
+## Reset to a clean vulnerable state
 
 ```bash
 docker compose down -v && docker compose up --build
 ```
 
-`-v` zmaže volume databázy, takže `seed/seed.sql` sa spustí nanovo (seed je
-idempotentný cez fresh-volume init).
+`-v` wipes the database volume, so `seed/seed.sql` runs again (the seed is
+idempotent via fresh-volume init). Note: `-v` also wipes the Ollama model volume,
+so the model is re-downloaded on the next start.
 
-## Odomykanie týždňov
+## Unlocking weeks
 
-Moduly sa odomykajú **kumulatívne** cez premennú `WEEK` (1–4). Kým je týždeň
-uzamknutý, jeho kód sa v aplikácii **vôbec nezaregistruje** — routy neexistujú,
-nedajú sa osloviť ani uhádnutím URL. Odomknutie = zvýšiť `WEEK`, doplniť flagy
-daného týždňa do `web` služby a redeploy.
+Modules unlock **cumulatively** via `WEEK` (1–4). While a week is locked, its code
+is **not registered** at all — its routes do not exist and cannot be reached even
+by guessing a URL. Unlock = raise `WEEK` and redeploy.
 
 ```bash
-WEEK=2 docker compose up --build   # alebo nastav WEEK v .env
+WEEK=2 docker compose up --build   # or set WEEK in .env
 ```
 
-## Izolácia flagov (tvrdá požiadavka)
+## Flag isolation (hard requirement)
 
-- Flagy sú **iba v env** (`FLAG_<ID>`), nikdy nie v šablónach ani v DB.
-- Žiadny SQLi/UNION nevráti flag — v tabuľkách žiadny nie je.
-  - **Výnimka:** W1-02 (maskované číslo VIP karty) — jeden flag je vložený do DB
-    pri seede, ako izolovaná hodnota, nikdy nie spoločná tabuľka flagov.
-- Vypnuté týždne nie sú zaregistrované → neexistujúca plocha útoku.
-- **W1-05** (jediný shell v celom CTF) beží v **samostatnom, izolovanom
-  kontajneri** (`internal: true` sieť, `cap_drop: ALL`), ktorý má v env **len
-  `FLAG_W1_05`**. Ani plná kompromitácia týždňa 1 nevydá flag z týždňov 2–4.
+- Flags live **only in env** (`FLAG_<ID>`), never in templates or the DB.
+- No SQLi/UNION returns a flag — none exists in any table.
+  - **Exception:** W1-02 (masked VIP card number) — a single flag is injected into
+    the DB at seed time, as an isolated value, never a shared flag table.
+- Locked weeks are not registered → no attack surface.
+- **W1-05** (the only shell in the whole CTF) runs in a **separate, isolated
+  container** (`internal: true` network, `cap_drop: ALL`) that holds only
+  `FLAG_W1_05`. Even full compromise of week 1 yields no flag from weeks 2–4.
 
-### Mapovanie ID → env premenná
+### ID → env variable mapping
 
-Názov premennej = `FLAG_` + ID úlohy s `-` nahradeným za `_`, veľkými písmenami.
-Napr. úloha `W1-05` → `FLAG_W1_05`. (Bez pomlčiek, nech sú env/`.env` prenosné.)
+Variable name = `FLAG_` + the task id with `-` replaced by `_`, upper-cased.
+E.g. task `W1-05` → `FLAG_W1_05`. (No hyphens, so env/`.env` stay portable.)
 
-## Mapovanie úloh (ID → OWASP → CTFd)
+## Task mapping (ID → OWASP → CTFd)
 
-| ID | Zraniteľnosť | OWASP 2025 | CTFd |
-|----|--------------|------------|------|
+| ID | Vulnerability | OWASP 2025 | CTFd |
+|----|---------------|------------|------|
 | W1-01 | SQLi — login bypass | A05 Injection | _tbd_ |
-| W1-02 | SQLi — UNION únik kariet | A05 Injection | _tbd_ |
-| W1-03 | Stored XSS (poznámka k prevodu) | A03/Injection | _tbd_ |
-| W1-04 | Reflected XSS (vyhľadávanie) | A05 (XSS) | _tbd_ |
+| W1-02 | SQLi — UNION card leak | A05 Injection | _tbd_ |
+| W1-03 | Stored XSS (transfer note) | A03/Injection | _tbd_ |
+| W1-04 | Reflected XSS (search) | A05 (XSS) | _tbd_ |
 | W1-05 | OS command injection (export) | A05 Injection | _tbd_ |
-| W2-01 | BOLA — cudzie transakcie | A01 BAC | _tbd_ |
-| W2-02 | BFLA — admin funkcia | A01 BAC | _tbd_ |
-| W2-03 | Mass assignment — povýšenie | A01/A06 | _tbd_ |
-| W2-04 | IDOR + chýbajúci rate limit | A01/A10 | _tbd_ |
-| W2-05 | Únik cez chybovú hlášku | A10 | _tbd_ |
-| W3-01 | Priama prompt injection | LLM01 | _tbd_ |
-| W3-02 | Obídenie inštrukcie o mlčaní | LLM02 | _tbd_ |
-| W3-03 | Nepriama prompt injection | LLM01 | _tbd_ |
+| W2-01 | BOLA — foreign transactions | A01 BAC | _tbd_ |
+| W2-02 | BFLA — admin function | A01 BAC | _tbd_ |
+| W2-03 | Mass assignment — privilege escalation | A01/A06 | _tbd_ |
+| W2-04 | IDOR + missing rate limit | A01/A10 | _tbd_ |
+| W2-05 | Leak via error message | A10 | _tbd_ |
+| W3-01 | Direct prompt injection | LLM01 | _tbd_ |
+| W3-02 | Bypassing a secrecy instruction | LLM02 | _tbd_ |
+| W3-03 | Indirect prompt injection | LLM01 | _tbd_ |
 | W3-04 | Excessive agency | LLM06 | _tbd_ |
-| W4-01 | Vstupný bod (log analýza) | A09 | _tbd_ |
-| W4-02 | Rozsah úniku | A09 | _tbd_ |
-| W4-03 | Časová os lateral movementu | A09 | _tbd_ |
-| W4-04 | Statická analýza vzorky | — | _tbd_ |
-| W4-05 | Malware report (human-graded) | — | _tbd_ |
 
-## Poznámky k úlohám (pre CTFd zadania)
+## Task notes (for CTFd challenges)
 
-Aplikácia je koncipovaná ako reálny internetbanking: neprihlásený vidí len
-verejnú landing page + prihlásenie a verejné vyhľadávanie; bankové funkcie
-(prehľad, transakcie, prevody, export, admin) sú až po prihlásení. Preto:
+The app is designed like a real bank: a logged-out visitor sees only the public
+landing + login/registration; banking features (overview, transactions,
+transfers, export, admin) are behind the login. So:
 
-- **W1-03 (stored XSS):** collector útočníka je in-app na `/w1-03/collect/<token>`
-  — zámerne **nie je v bankovom menu** (je to nástroj útočníka, nie funkcia banky).
-  V zadaní CTFd uveď, že hráč exfiltruje cookie na `/w1-03/collect/<vlastný-token>`
-  a výsledok si pozrie tam (alebo cez pomocnú stránku `/collector`). Admin „bot"
-  je emulovaný a spustí sa po akcii „Nahlásiť adminovi".
-- **W1-04 (reflected XSS):** vyhľadávanie je verejná časť stránky (pred loginom).
-- **Admin panel** (`/admin/review`) je v menu iba pre rolu admin; bežný klient sa
-  k nemu dostane až po eskalácii (napr. login bypass ako `admin`).
+- **W1-03 (stored XSS):** the attacker's collector is in-app at
+  `/w1-03/collect/<token>` — deliberately **not** in the bank menu (it is an
+  attacker tool, not a bank feature). In the CTFd challenge, state that the player
+  exfiltrates the cookie to `/w1-03/collect/<their-token>` and reads it there (or
+  via the `/collector` helper page). The admin "bot" is emulated and runs on the
+  "Report to admin" action.
+- **W1-04 (reflected XSS):** search is behind the bank login; `/search/solved`
+  requires a per-render nonce from the page, so a bare request does not hand out
+  the flag.
+- **Admin panel** (`/admin/review`) is in the menu only for the admin role; a
+  regular client reaches it only after escalation (e.g. login bypass as `admin`).
 
-## Štruktúra
+## Structure
 
 ```
 danubius-bank/
-├── docker-compose.yml     # web + db (+ ollama v3, exporter vo W1-05)
-├── .env.example           # WEEK, DB creds, FLAG_* premenné
+├── docker-compose.yml     # gate + web + db + ollama + exporter
+├── .env.example           # WEEK, DB creds, FLAG_* variables, gate settings
 ├── Dockerfile             # web image (python:3.12-slim)
 ├── requirements.txt
 ├── wsgi.py
 ├── app/
-│   ├── __init__.py        # factory + podmienená registrácia modulov podľa WEEK
-│   ├── config.py          # feature flagy
-│   ├── db.py  auth.py  flags.py
+│   ├── __init__.py        # factory + conditional module registration by WEEK
+│   ├── config.py db.py auth.py flags.py
 │   ├── modules/           # week1_login, week2_api, week3_llm, week4_evidence
 │   └── templates/
-├── seed/seed.sql          # klienti, účty, karty, transakcie
-├── fixes/README.md        # index referenčných opráv (vetvy fix/*)
-└── secure-coding/weekN.md # zraniteľný úsek + otázky + skrytá oprava
+├── gate/                  # access gate + operator dashboard
+├── exporter/              # isolated W1-05 container
+├── ollama/                # LLM backend (week 3)
+├── seed/seed.sql          # clients, accounts, cards, transactions
+├── tests/                 # standalone regression suite (runs via the gate)
+├── fixes/patches/         # reference fixes as .patch files
+└── secure-coding/weekN.md # vulnerable excerpt + questions + hidden fix
 ```
 
-## Referenčné opravy
+## Reference fixes
 
-`master` je plne zraniteľná. Ku každej zraniteľnosti existuje vetva `fix/<id>` s
-jediným commitom; diff `master` ↔ `fix/<id>` je referenčná oprava. Pozri
-[fixes/README.md](fixes/README.md) a `secure-coding/weekN.md`.
+The `master` branch is fully vulnerable (it is the target). The reference fixes
+are stored as patch files in [`fixes/patches/`](fixes/patches/) and explained in
+`secure-coding/week1.md`, `week2.md`, `week3.md`. See [SITEMAP.md](SITEMAP.md) for
+a route map and [WALKTHROUGH.md](WALKTHROUGH.md) for how to run and solve W1–W3.

@@ -1,37 +1,37 @@
-# Referenčné opravy
+# Reference fixes
 
-Repo drží len vetvu **`master`** (zámerne zraniteľný terč). Referenčné opravy sú
-uložené ako **patch súbory** v [`fixes/patches/`](patches/) a podrobne vysvetlené
-v `secure-coding/week1.md`, `week2.md`, `week3.md`.
+The `master` branch is fully vulnerable. The reference fixes are stored as **patch
+files** in [`fixes/patches/`](patches/) and explained in detail in
+`secure-coding/week1.md`, `week2.md`, `week3.md`.
 
-Zobraziť / aplikovať opravu:
+View / apply a fix:
 
 ```bash
-cat fixes/patches/W1-01.patch                 # pozri opravu
-git apply --check fixes/patches/W1-01.patch   # over, že sa dá aplikovať
-git apply fixes/patches/W1-01.patch           # aplikuj na master (zavrie danú vuln)
-git checkout -- .                             # vráť späť (master ostáva zraniteľný)
-git apply fixes/patches/ALL.patch             # všetky opravy naraz
+cat fixes/patches/W1-01.patch                 # see the fix
+git apply --check fixes/patches/W1-01.patch   # verify it applies
+git apply fixes/patches/W1-01.patch           # apply on master (closes that vuln)
+git checkout -- .                             # revert (master stays vulnerable)
+git apply fixes/patches/ALL.patch             # all fixes at once
 ```
 
-Každá oprava je **overená** regresným balíkom: po aplikovaní `fix` daný test v
-`tests/run_tests.py` prejde z PASS na FAIL (zraniteľnosť je zavretá), ostatné
-ostanú PASS. Na čistom `master` prechádzajú všetky.
+Every fix is **verified** by the regression suite: after applying a fix, the
+matching test in `tests/run_tests.py` flips from PASS to FAIL (the vulnerability
+is closed) while the others stay PASS. On a clean `master`, all pass.
 
-| ID | Patch | Podstata opravy |
-|----|-------|-----------------|
-| W1-01 | `patches/W1-01.patch` | parametrizovaný login dotaz |
-| W1-02 | `patches/W1-02.patch` | parametrizované vyhľadávanie |
-| W1-03 | `patches/W1-03.patch` | escapovaný výstup poznámky |
-| W1-04 | `patches/W1-04.patch` | escapovaný odraz `q` |
-| W1-05 | `patches/W1-05.patch` | `subprocess` bez shellu (argv) |
-| W2-01 | `patches/W2-01.patch` | kontrola vlastníctva objektu |
-| W2-02 | `patches/W2-02.patch` | kontrola admin roly |
-| W2-03 | `patches/W2-03.patch` | allowlist polí (mass assignment) |
-| W2-04 | `patches/W2-04.patch` | limit pre každú menu |
-| W2-05 | `patches/W2-05.patch` | generická chyba (bez úniku) |
-| W3-01 | `patches/W3-01.patch` | tajomstvo mimo system promptu |
-| W3-02 | `patches/W3-02.patch` | chránená hodnota mimo LLM kontextu |
-| W3-03 | `patches/W3-03.patch` | tajomstvo mimo kontextu (filter = defense in depth) |
-| W3-04 | `patches/W3-04.patch` | nástroj obmedzený na volajúceho (least privilege) |
-| — | `patches/ALL.patch` | všetky opravy naraz |
+| ID | Patch | What the fix does |
+|----|-------|-------------------|
+| W1-01 | `patches/W1-01.patch` | parameterized login query |
+| W1-02 | `patches/W1-02.patch` | parameterized search |
+| W1-03 | `patches/W1-03.patch` | escaped note output |
+| W1-04 | `patches/W1-04.patch` | escaped reflected `q` |
+| W1-05 | `patches/W1-05.patch` | `subprocess` without a shell (argv) |
+| W2-01 | `patches/W2-01.patch` | object ownership check |
+| W2-02 | `patches/W2-02.patch` | admin role check |
+| W2-03 | `patches/W2-03.patch` | field allowlist (mass assignment) |
+| W2-04 | `patches/W2-04.patch` | limit enforced for every currency |
+| W2-05 | `patches/W2-05.patch` | generic error (no leak) |
+| W3-01 | `patches/W3-01.patch` | secret kept out of the system prompt |
+| W3-02 | `patches/W3-02.patch` | protected value kept out of the LLM context |
+| W3-03 | `patches/W3-03.patch` | secret kept out of context (filter = defense in depth) |
+| W3-04 | `patches/W3-04.patch` | tool restricted to the caller (least privilege) |
+| — | `patches/ALL.patch` | all fixes at once |
