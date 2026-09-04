@@ -1,0 +1,72 @@
+# Danubius Bank - CTF target. NEVER deploy to a production network.
+# Clean reset:  docker compose down -v && docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-danubius}
+      POSTGRES_USER: ${DB_USER:-danubius}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-danubius}
+    volumes:
+      - ./seed/seed.sql:/docker-entrypoint-initdb.d/10-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-danubius} -d ${DB_NAME:-danubius}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    environment:
+      WEEK: ${WEEK:-1}
+      SECRET_KEY: ${SECRET_KEY:-dev-danubius-not-secret}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-danubius}
+      DB_USER: ${DB_USER:-danubius}
+      DB_PASSWORD: ${DB_PASSWORD:-danubius}
+      # --- Only the ACTIVE week's flags are injected here (defense in depth).
+      # Week 1 (note: FLAG_W1_05 is deliberately NOT here - it lives only in
+      # the isolated exporter container, added at Week 1):
+      FLAG_W1_01: ${FLAG_W1_01:-RPC{unset_w1_01}}
+      FLAG_W1_02: ${FLAG_W1_02:-RPC{unset_w1_02}}
+      FLAG_W1_03: ${FLAG_W1_03:-RPC{unset_w1_03}}
+      FLAG_W1_04: ${FLAG_W1_04:-RPC{unset_w1_04}}
+      # Week 2+ flags: uncomment the relevant block as you raise WEEK.
+      # FLAG_W2_01: ${FLAG_W2_01:-}
+      # FLAG_W2_02: ${FLAG_W2_02:-}
+      # FLAG_W2_03: ${FLAG_W2_03:-}
+      # FLAG_W2_04: ${FLAG_W2_04:-}
+      # FLAG_W2_05: ${FLAG_W2_05:-}
+      # FLAG_W3_01: ${FLAG_W3_01:-}
+      # FLAG_W3_02: ${FLAG_W3_02:-}
+      # FLAG_W3_03: ${FLAG_W3_03:-}
+      # FLAG_W3_04: ${FLAG_W3_04:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+# -----------------------------------------------------------------------------
+# W1-05 exporter (added at Week 1): the ONLY container that yields a shell.
+# It sits on an internal:true network (no internet, no route to db/ollama),
+# holds ONLY FLAG_W1_05, drops all caps. `web` also joins that network so it can
+# proxy the filename to it; the exporter itself can reach nothing else.
+# Kept commented until Week 1 so `up` works with just web+db right now.
+#
+#  exporter:
+#    build: ./exporter          # python:3.12 (full image: has bash/cat/ls/id)
+#    environment:
+#      FLAG_W1_05: ${FLAG_W1_05:-RPC{unset_w1_05}}
+#    networks: [exporter_isolated]
+#    cap_drop: [ALL]
+#    read_only: true
+#
+# (web would then also get:  networks: [default, exporter_isolated])
+#
+# networks:
+#   exporter_isolated:
+#     internal: true
+# -----------------------------------------------------------------------------

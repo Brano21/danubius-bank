@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Prehlad - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Prehlad uctu</h1>
+  <p>Klient: <strong>{{ client.full_name }}</strong> ({{ client.username }})</p>
+  <p>Rola: {{ client.role }}{% if client.is_vip %} &middot; VIP{% endif %}</p>
+  <p><em>Prehlad transakcii a dalsie funkcie pribudnu v module Week 1.</em></p>
+{% endblock %}

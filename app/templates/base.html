@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}{{ bank_name }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:0;background:#eef1f4;color:#1a2330}
+    header{background:#0b3d6e;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+    header a{color:#cfe0f0;text-decoration:none;margin-left:14px}
+    main{max-width:820px;margin:24px auto;background:#fff;padding:24px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    input,button{font-size:1rem;padding:8px;margin:4px 0}
+    button{background:#0b3d6e;color:#fff;border:0;border-radius:4px;cursor:pointer}
+    .err{color:#b00020}
+    table{border-collapse:collapse;width:100%;margin-top:12px}
+    td,th{border:1px solid #ccd;padding:6px 8px;text-align:left}
+    footer{max-width:820px;margin:12px auto;color:#667;font-size:.85rem}
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>{{ bank_name }}</strong> &middot; <small>Internetbanking</small></div>
+    <nav>
+      <a href="{{ url_for('week1.index') }}">Domov</a>
+      {% if client %}
+        <a href="{{ url_for('week1.dashboard') }}">Prehlad</a>
+        <a href="{{ url_for('week1.logout') }}">Odhlasit ({{ client.username }})</a>
+      {% else %}
+        <a href="{{ url_for('week1.login') }}">Prihlasit</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer>Danubius Bank &mdash; CTF ciel. Aktivny WEEK={{ WEEK }}. Nikdy nenasadzuj do produkcnej siete.</footer>
+</body>
+</html>

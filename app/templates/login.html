@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Prihlasenie - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>Prihlasenie</h1>
+  {% if error %}<p class="err">{{ error }}</p>{% endif %}
+  <form method="post">
+    <label>Prihlasovacie meno<br><input name="username" autofocus></label><br>
+    <label>Heslo<br><input name="password" type="password"></label><br>
+    <button type="submit">Prihlasit</button>
+  </form>
+{% endblock %}
