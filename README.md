@@ -3,15 +3,36 @@
 Zámerne zraniteľná banková webová aplikácia pre interný, 4-týždňový CTF /
 secure-coding tréning. **Nikdy nenasadzuj do produkčnej ani zdieľanej siete.**
 
-> Stav: **skeleton** — kostra beží (web + db), zraniteľnosti sa dopĺňajú po
-> týždňoch (W1 → W4). Aktuálne moduly týždňov 2–4 sú uzamknuté.
+> Stav: **W1–W3 hotové** — 14 zraniteľností, realistické bankové UX, bezpečná
+> brána + operátorský dashboard, regresné testy. Týždne sa odomykajú cez `WEEK`
+> (1–4). Week 4 (blue-team) je zatiaľ odložený.
 
 ## Rýchly štart
 
 ```bash
-cp .env.example .env          # uprav flagy / heslá podľa behu
-docker compose up --build     # web na http://localhost:8080
+cp .env.example .env                  # uprav flagy / heslá podľa behu
+WEEK=3 docker compose up --build      # brána na http://localhost:8080
 ```
+
+## Predvolené prihlásenie
+
+Aplikácia beží **za bránou** (`http://localhost:8080`). Predvolené (demo) údaje:
+
+| Kde | Meno | Heslo |
+|-----|------|-------|
+| **Brána — vstup pre hráča** | `tester` | `test123` |
+| | `hrac1` | `danubius1` |
+| | `hrac2` | `danubius2` |
+| **Operátor / dashboard** (`/_gate/admin`) | `admin` | `change-me-admin` |
+
+- Hráčske účty sa spravujú v `gate/players.json`; admin v `.env`
+  (`GATE_ADMIN_USER` / `GATE_ADMIN_PASSWORD`).
+- **Do samotnej banky** sa hráč po vstupe cez bránu dostane zraniteľnosťou
+  **W1-01** (SQLi login bypass): meno `' OR '1'='1'-- `, heslo hocijaké.
+  Seedované bankové účty (v `seed/seed.sql`) sú *ciele* úloh, nie prihlásenie.
+
+> ⚠️ **Pred ostrým behom zmeň všetky heslá:** `GATE_ADMIN_PASSWORD`,
+> `GATE_SECRET`, hráčske účty v `gate/players.json` aj DB heslo.
 
 ## Reset do čistého zraniteľného stavu
 
