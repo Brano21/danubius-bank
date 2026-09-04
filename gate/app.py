@@ -18,6 +18,7 @@ import hmac
 import json
 import os
 import sqlite3
+import threading
 import time
 
 import requests
@@ -34,6 +35,16 @@ ADMIN_PASSWORD = os.environ.get("GATE_ADMIN_PASSWORD", "change-me-admin")
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("GATE_SECRET", "gate-dev-secret")
 app.config["SESSION_COOKIE_NAME"] = "gate_session"   # must differ from the app's
+# Single strong sign-in in front of ALL of Danubius: a long-lived session,
+# valid for 7 days of inactivity, cookie re-issued (slid) at most every 12h.
+app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(days=7)
+app.config["SESSION_REFRESH_EACH_REQUEST"] = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("GATE_COOKIE_SECURE", "0") == "1"
+
+SESSION_MAX_IDLE = 7 * 24 * 3600     # auto-logout after 7 days without a visit
+SESSION_REFRESH_AFTER = 12 * 3600    # re-issue (slide) the token every 12 hours
 
 HOP_BY_HOP = {
     "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
@@ -44,6 +55,45 @@ HOP_BY_HOP = {
 
 def consteq(a, b):
     return hmac.compare_digest(str(a), str(b))
+
+
+# Basic brute-force protection: lock an IP after too many failures in a window.
+_login_lock = threading.Lock()
+_login_fails = {}          # ip -> (count, window_start_ts)
+LOGIN_MAX_FAILS = 8
+LOGIN_WINDOW = 300         # 5 minutes
+
+
+def _rate_limited(ip):
+    with _login_lock:
+        cnt, start = _login_fails.get(ip, (0, 0))
+        if time.time() - start > LOGIN_WINDOW:
+            return False
+        return cnt >= LOGIN_MAX_FAILS
+
+
+def _note_fail(ip):
+    with _login_lock:
+        cnt, start = _login_fails.get(ip, (0, 0))
+        if time.time() - start > LOGIN_WINDOW:
+            cnt, start = 0, time.time()
+        _login_fails[ip] = (cnt + 1, start or time.time())
+
+
+def _clear_fails(ip):
+    with _login_lock:
+        _login_fails.pop(ip, None)
+
+
+def verify_password(stored, given):
+    # Supports werkzeug password hashes (pbkdf2:/scrypt:) or plaintext (dev).
+    if isinstance(stored, str) and stored.startswith(("pbkdf2:", "scrypt:")):
+        try:
+            from werkzeug.security import check_password_hash
+            return check_password_hash(stored, given)
+        except Exception:
+            return False
+    return consteq(stored, given)
 
 
 def load_players():
@@ -108,14 +158,22 @@ def player_login():
     error = None
     nxt = request.values.get("next", "/")
     if request.method == "POST":
-        u = request.form.get("username", "")
-        p = request.form.get("password", "")
-        players = load_players()
-        if u in players and consteq(players[u], p):
-            session.clear()
-            session["player"] = u
-            return redirect(nxt or "/")
-        error = "Neplatne prihlasovacie udaje."
+        ip = request.remote_addr or "?"
+        if _rate_limited(ip):
+            error = "Prilis vela pokusov. Skus o chvilu."
+        else:
+            u = request.form.get("username", "")
+            p = request.form.get("password", "")
+            players = load_players()
+            if u in players and verify_password(players[u], p):
+                _clear_fails(ip)
+                session.clear()
+                session.permanent = True            # 7-day lifetime
+                session["player"] = u
+                session["seen"] = time.time()
+                return redirect(nxt or "/")
+            _note_fail(ip)
+            error = "Neplatne prihlasovacie udaje."
     return render_template("gate_login.html", error=error, next=nxt)
 
 
@@ -182,6 +240,14 @@ def proxy(path):
     if path.startswith("_gate"):
         abort(404)
     player = session.get("player")
+    if player:
+        idle = time.time() - session.get("seen", 0)
+        if idle > SESSION_MAX_IDLE:            # 7 days without a visit -> expire
+            session.clear()
+            player = None
+        elif idle > SESSION_REFRESH_AFTER:     # slide the 7-day window every 12h
+            session.permanent = True
+            session["seen"] = time.time()
     if not player:
         return redirect(url_for("player_login", next=request.full_path))
 

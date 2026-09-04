@@ -18,7 +18,8 @@
          box-shadow:0 1px 4px rgba(0,0,0,.15)}
     .topbar .inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;
          gap:16px;padding:10px 20px;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.15rem}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.15rem;color:#fff;text-decoration:none}
+    .brand:hover{opacity:.92}
     .brand .logo{width:32px;height:32px;border-radius:8px;background:#fff;color:var(--navy);
          display:grid;place-items:center;font-weight:800}
     .brand small{font-weight:400;opacity:.85;font-size:.72rem;display:block;margin-top:-3px}
@@ -73,10 +74,10 @@
 <body>
   <header class="topbar">
     <div class="inner">
-      <div class="brand">
+      <a class="brand" href="{{ url_for('week1.index') }}">
         <span class="logo">D</span>
         <span>{{ bank_name }}<small>Internetbanking</small></span>
-      </div>
+      </a>
       <span class="week-badge">CTF &middot; WEEK {{ WEEK }}</span>
     </div>
   </header>
