@@ -6,7 +6,7 @@ bypass, W1-02 UNION leak, W1-03 stored XSS, W1-04 reflected XSS, W1-05 OS
 command injection) will be introduced here, each isolated and marked with a
 # VULN: <id> ... comment.
 """
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, session
 
 from ...auth import login_user, logout_user, current_client, login_required
 from ...db import fetch_one, fetch_all
@@ -80,6 +80,27 @@ def transactions():
     )
     rows = fetch_all(sql)
     return render_template("transactions.html", rows=rows, q=q, client=client)
+
+
+@bp.route("/search")
+def search():
+    q = request.args.get("q", "")
+    solved = session.get("w1_04_solved", False)
+    # VULN: W1-04 reflected XSS (A05 / XSS). q is echoed back into the page
+    # WITHOUT escaping (search.html renders it with |safe), so a payload such as
+    #   <img src=x onerror="fetch('/search/solved')">
+    # executes in the visitor's browser.
+    flag = get_flag("W1-04") if solved else None
+    return render_template("search.html", q=q, flag=flag)
+
+
+@bp.route("/search/solved")
+def search_solved():
+    # The predefined payload calls this from the reflected page; a browser that
+    # actually executed the injected JS marks the task solved and is shown
+    # FLAG_W1-04 on the next search render.
+    session["w1_04_solved"] = True
+    return get_flag("W1-04")
 
 
 @bp.route("/logout")
