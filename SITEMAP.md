@@ -35,8 +35,7 @@ prehliadač
 |-------|----------|-------|
 | `/` | Landing (marketing) / po bank-logine portál-domov | — |
 | `/login` | **Bankový login** | **terč W1-01** (SQLi bypass) |
-| `/search` | Verejné „vyhľadávanie na stránke" | **terč W1-04** (Reflected XSS) |
-| `/search/solved` | Mechanika W1-04 (odomkne flag po payloade) | (W1-04) |
+| `/register` | **Registrácia** (email + 2× heslo, bez overenia mailu; účet sa uloží) | reálna funkcia (surface na testovanie) |
 | `/collector` | Pomôcka: zadaj token → tvoj collector | nástroj útočníka (W1-03) |
 | `/w1-03/collect/<token>` | Collector útočníka (zachytené dáta) | nástroj útočníka (W1-03) |
 
@@ -46,6 +45,8 @@ prehliadač
 |-------|----------|-------|
 | `/dashboard` | Prehľad účtu | **flag W1-01** sa tu zobrazí (klient id 1) |
 | `/transactions` | Vyhľadávanie v transakciách | **terč W1-02** (UNION SQLi) |
+| `/search` | Vyhľadávanie na stránke (za loginom) | **terč W1-04** (Reflected XSS) |
+| `/search/solved` | Mechanika W1-04 — vyžaduje nonce zo stránky (holý GET nedá flag) | (W1-04) |
 | `/transfer` | Nový prevod (pole *Poznámka*) | **terč W1-03** (Stored XSS) |
 | `/w1-03/report/<id>` | „Nahlásiť adminovi" → emulovaný admin | mechanika W1-03 |
 | `/admin/review` | Admin kontrola prevodov (render poznámky **bez escapovania**) | **sink W1-03**; len rola `admin` |

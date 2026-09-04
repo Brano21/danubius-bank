@@ -6,10 +6,12 @@ bypass, W1-02 UNION leak, W1-03 stored XSS, W1-04 reflected XSS, W1-05 OS
 command injection) will be introduced here, each isolated and marked with a
 # VULN: <id> ... comment.
 """
+import secrets
+
 from flask import Blueprint, render_template, request, redirect, url_for, session
 
 from ...auth import login_user, logout_user, current_client, login_required
-from ...db import fetch_one, fetch_all
+from ...db import fetch_one, fetch_all, get_db
 from ...flags import get_flag
 
 bp = Blueprint("week1", __name__)
@@ -44,6 +46,46 @@ def login():
             return redirect(url_for("week1.dashboard"))
         error = "Nespravne prihlasovacie udaje."
     return render_template("login.html", error=error)
+
+
+@bp.route("/register", methods=["GET", "POST"])
+def register():
+    # Functional registration (like OWASP Juice Shop): email + password twice,
+    # no email verification, the account is persisted in the DB. Parameterized
+    # (not a target). New users can then log in via /login.
+    error = None
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        p1 = request.form.get("password", "")
+        p2 = request.form.get("password2", "")
+        if "@" not in email or "." not in email.split("@")[-1]:
+            error = "Zadaj platny email."
+        elif len(p1) < 6:
+            error = "Heslo musi mat aspon 6 znakov."
+        elif p1 != p2:
+            error = "Hesla sa nezhoduju."
+        elif fetch_one("SELECT id FROM clients WHERE username = %s", (email,)):
+            error = "Tento email uz je registrovany."
+        else:
+            cur = get_db().cursor()
+            cur.execute(
+                "INSERT INTO clients (username, password, full_name, role) "
+                "VALUES (%s, %s, %s, 'client') RETURNING id",
+                (email, p1, email),
+            )
+            cid = cur.fetchone()[0]
+            iban = "SK" + "".join(secrets.choice("0123456789") for _ in range(22))
+            cur.execute(
+                "INSERT INTO accounts (client_id, iban, balance, currency, account_limit) "
+                "VALUES (%s, %s, 0, 'EUR', 5000)",
+                (cid, iban),
+            )
+            cur.close()
+            return render_template(
+                "login.html", error=None,
+                info="Registracia uspesna. Prihlas sa svojim emailom a heslom.",
+            )
+    return render_template("register.html", error=error)
 
 
 @bp.route("/dashboard")
@@ -83,22 +125,31 @@ def transactions():
 
 
 @bp.route("/search")
+@login_required
 def search():
     q = request.args.get("q", "")
+    # Per-render nonce placed in the page (window.__proof). The solve endpoint
+    # requires it, so the flag CANNOT be obtained by hitting /search/solved
+    # directly - the injected JS must read it from the page and send it back.
+    nonce = secrets.token_hex(8)
+    session["w1_04_nonce"] = nonce
     solved = session.get("w1_04_solved", False)
     # VULN: W1-04 reflected XSS (A05 / XSS). q is echoed back into the page
-    # WITHOUT escaping (search.html renders it with |safe), so a payload such as
-    #   <img src=x onerror="fetch('/search/solved')">
-    # executes in the visitor's browser.
+    # WITHOUT escaping (search.html renders it with |safe), so a payload like
+    #   <img src=x onerror="fetch('/search/solved?n='+window.__proof)">
+    # executes in the visitor's browser and completes the task.
     flag = get_flag("W1-04") if solved else None
-    return render_template("search.html", q=q, flag=flag)
+    return render_template("search.html", q=q, flag=flag, nonce=nonce)
 
 
 @bp.route("/search/solved")
+@login_required
 def search_solved():
-    # The predefined payload calls this from the reflected page; a browser that
-    # actually executed the injected JS marks the task solved and is shown
-    # FLAG_W1-04 on the next search render.
+    # Requires the per-render nonce from the reflected page, so a bare request
+    # (e.g. curl GET /search/solved) does NOT hand out the flag - the XSS
+    # payload must run in the page, read window.__proof and send it here.
+    if request.args.get("n", "") != session.get("w1_04_nonce"):
+        return "forbidden", 403
     session["w1_04_solved"] = True
     return get_flag("W1-04")
 

@@ -2,10 +2,12 @@
 {% block title %}Prihlasenie - {{ bank_name }}{% endblock %}
 {% block content %}
   <h1>Prihlasenie</h1>
+  {% if info %}<p class="ok">{{ info }}</p>{% endif %}
   {% if error %}<p class="err">{{ error }}</p>{% endif %}
   <form method="post">
     <label>Prihlasovacie meno<br><input name="username" autofocus></label><br>
     <label>Heslo<br><input name="password" type="password"></label><br>
     <button type="submit">Prihlasit</button>
   </form>
+  <p class="muted">Nemas ucet? <a href="{{ url_for('week1.register') }}">Zaregistruj sa</a>.</p>
 {% endblock %}

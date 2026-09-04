@@ -7,6 +7,7 @@
   <div class="grid">
     <a class="tile" href="{{ url_for('week1.dashboard') }}"><div class="t">Prehlad uctu</div><div class="d">Zostatok a udaje klienta</div></a>
     <a class="tile" href="{{ url_for('week1.transactions') }}"><div class="t">Transakcie</div><div class="d">Historia a vyhladavanie</div></a>
+    <a class="tile" href="{{ url_for('week1.search') }}"><div class="t">Vyhladavanie</div><div class="d">Fulltext na stranke</div></a>
     <a class="tile" href="{{ url_for('week1.transfer') }}"><div class="t">Novy prevod</div><div class="d">Odoslat platbu s poznamkou</div></a>
     <a class="tile" href="{{ url_for('week1.export') }}"><div class="t">Export vypisu</div><div class="d">Stiahnut PDF vypis</div></a>
     {% if WEEK >= 3 %}
@@ -20,9 +21,12 @@
   {# Neprihlaseny: verejna marketingova landing page #}
   <div class="hero">
     <h1>Danubius Bank &mdash; internetbanking pre kazdy den</h1>
-    <p class="lead">Platby, karty a vypisy na jednom mieste. Prihlaste sa do svojho
-       uctu a spravujte svoje financie bezpecne 24/7.</p>
-    <a class="btn" href="{{ url_for('week1.login') }}">Prihlasit sa do internetbankingu</a>
+    <p class="lead">Platby, karty a vypisy na jednom mieste. Prihlaste sa alebo si
+       vytvorte ucet a spravujte svoje financie 24/7.</p>
+    <p>
+      <a class="btn" href="{{ url_for('week1.login') }}">Prihlasit sa</a>
+      <a class="btn btn-2" href="{{ url_for('week1.register') }}">Vytvorit ucet</a>
+    </p>
   </div>
   <div class="grid">
     <div class="feature"><div class="t">Okamzite platby</div><div class="d">SEPA prevody a trvale prikazy v realnom case.</div></div>

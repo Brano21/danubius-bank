@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Vyhladavanie - {{ bank_name }}{% endblock %}
 {% block content %}
+  <script>window.__proof="{{ nonce }}";</script>
   <h1>Vyhladavanie na stranke</h1>
   <form method="get">
     <input name="q" value="{{ q }}" size="40" placeholder="hladany vyraz">
