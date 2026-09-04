@@ -11,9 +11,11 @@ VIP_ACCOUNT_ID = 3   # the "target" whose statement reveals the flag
 @bp.route("/accounts/<int:account_id>/transactions")
 @tokens.require_token
 def account_transactions(ident, account_id):
-    # VULN: W2-01 Broken Object Level Authorization (A01). There is NO check
-    # that the token's client owns account_id - incrementing the id reads any
-    # account's transactions.
+    # FIX W2-01: enforce object-level authorization - the caller may only read
+    # accounts they own, so incrementing the id is rejected (BOLA closed).
+    owner = fetch_one("SELECT client_id FROM accounts WHERE id = %s", (account_id,))
+    if not owner or owner["client_id"] != ident["cid"]:
+        return jsonify(error="forbidden"), 403
     rows = fetch_all(
         "SELECT id, ts::text AS ts, amount::text AS amount, currency, "
         "counterparty, note FROM transactions WHERE account_id = %s ORDER BY id",

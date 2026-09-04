@@ -17,10 +17,11 @@ def create_transfer(ident):
         amount = 0.0
     currency = str(body.get("currency", "EUR"))
     to_account = body.get("to_account")
-    # VULN: W2-04 (A01/A10). The fraud limit is only enforced for EUR - passing
-    # ANY other currency skips the check entirely. The endpoint also has no rate
-    # limit, so the check can additionally be raced with concurrent requests.
-    if currency == "EUR" and amount > FRAUD_LIMIT_EUR:
+    # FIX W2-04: enforce the limit for EVERY currency (convert to a common base
+    # first), so no currency can dodge the check.
+    rates = {"EUR": 1.0, "USD": 0.92, "GBP": 1.17, "CZK": 0.040}
+    amount_eur = amount * rates.get(currency, 1.0)
+    if amount_eur > FRAUD_LIMIT_EUR:
         return jsonify(error="fraud limit exceeded", limit=FRAUD_LIMIT_EUR), 403
     resp = {"status": "executed", "to_account": to_account,
             "amount": amount, "currency": currency}

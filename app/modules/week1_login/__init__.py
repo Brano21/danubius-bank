@@ -26,19 +26,12 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        # VULN: W1-01 SQL injection (A05) - the login query is built by string
-        # concatenation, so input breaks out of the quotes. A payload in the
-        # username field, e.g.  ' OR '1'='1'--  , comments out the password
-        # check and matches the first row (client id 1). No parameterization,
-        # so a WAF / front-end validation on password length does not help.
-        sql = (
-            "SELECT id FROM clients WHERE username = '"
-            + username
-            + "' AND password = '"
-            + password
-            + "'"
+        # FIX W1-01: parameterized query - user input is bound as data, never
+        # concatenated into the SQL text, so it cannot alter the query.
+        row = fetch_one(
+            "SELECT id FROM clients WHERE username = %s AND password = %s",
+            (username, password),
         )
-        row = fetch_one(sql)
         if row:
             login_user(row["id"])
             return redirect(url_for("week1.dashboard"))
@@ -68,17 +61,13 @@ def transactions():
     )
     acct_id = acct["id"] if acct else 0
     q = request.args.get("q", "")
-    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
-    # concatenated into the query, so a UNION SELECT appends rows from another
-    # table - e.g. cards - leaking card numbers. The visible columns are all
-    # text, so a working UNION needs three text columns.
-    sql = (
+    # FIX W1-02: parameterized query; the search term is bound as a value, so a
+    # UNION cannot be injected (account_id is a trusted int from the session).
+    rows = fetch_all(
         "SELECT counterparty, note, direction FROM transactions "
-        "WHERE account_id = " + str(acct_id) + " "
-        "AND counterparty ILIKE '%" + q + "%' "
-        "ORDER BY ts DESC"
+        "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
+        (acct_id, "%" + q + "%"),
     )
-    rows = fetch_all(sql)
     return render_template("transactions.html", rows=rows, q=q, client=client)
 
 

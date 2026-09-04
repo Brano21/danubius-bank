@@ -18,10 +18,12 @@ def run():
     # concatenated into a shell command executed with shell=True, so a payload
     # such as   vypis.pdf; id   or   vypis.pdf; cat /flag   runs arbitrary
     # commands in this container.
-    cmd = "echo 'Priprava PDF exportu vypisu ...'; ls -la /srv/exports/" + name
+    # FIX W1-05: no shell. The filename is a single argv element, so shell
+    # metacharacters (;, |, `, &&) are treated as literal text, not commands.
     try:
         out = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=10
+            ["ls", "-la", "/srv/exports/" + name],
+            shell=False, capture_output=True, text=True, timeout=10,
         )
         body = out.stdout + out.stderr
     except Exception as e:  # noqa: BLE001

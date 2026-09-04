@@ -9,9 +9,9 @@ from ...flags import get_flag
 @bp.route("/admin/cards/<int:card_id>/unblock", methods=["POST"])
 @tokens.require_token
 def unblock_card(ident, card_id):
-    # VULN: W2-02 Broken Function Level Authorization (A01). This is an admin
-    # function, but there is NO role check - any valid (non-admin) token can
-    # call it and unblock a card that is not theirs.
+    # FIX W2-02: require the admin role for this admin function (BFLA closed).
+    if tokens.effective_role(ident) != "admin":
+        return jsonify(error="admin role required"), 403
     card = fetch_one("SELECT id, status FROM cards WHERE id = %s", (card_id,))
     if not card:
         return jsonify(error="card not found"), 404
