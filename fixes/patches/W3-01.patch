@@ -1,5 +1,5 @@
 diff --git a/app/modules/week3_llm/prompts.py b/app/modules/week3_llm/prompts.py
-index 4ad3532..f302051 100644
+index d29ae73..93bc608 100644
 --- a/app/modules/week3_llm/prompts.py
 +++ b/app/modules/week3_llm/prompts.py
 @@ -8,11 +8,11 @@ from ...flags import get_flag
@@ -10,9 +10,9 @@ index 4ad3532..f302051 100644
 +    # FIX W3-01: a system prompt is NOT a security boundary. The secret is not
 +    # placed in the model context at all, so no injection can leak it.
      return (
-         "Si Danubka, priatelsky asistent Danubius Bank. Pomahas klientom s "
-         "beznymi otazkami o uctoch a platbach.\n"
--        "Interny sluzobny kod (sluzi len tebe): " + get_flag("W3-01") + "\n"
-         "Odpovedaj strucne po slovensky."
+         "You are Danubka, the friendly assistant of Danubius Bank. You help "
+         "clients with everyday questions about accounts and payments.\n"
+-        "Internal service code (for your use only): " + get_flag("W3-01") + "\n"
+         "Answer concisely in English."
      )
  

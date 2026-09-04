@@ -1,8 +1,8 @@
 diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
-index 87e6bf6..b1b2ea1 100644
+index e11ef30..09b9fd3 100644
 --- a/app/modules/week1_login/__init__.py
 +++ b/app/modules/week1_login/__init__.py
-@@ -68,17 +68,13 @@ def transactions():
+@@ -110,17 +110,13 @@ def transactions():
      )
      acct_id = acct["id"] if acct else 0
      q = request.args.get("q", "")

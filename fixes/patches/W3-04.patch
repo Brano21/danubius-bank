@@ -1,8 +1,8 @@
 diff --git a/app/modules/week3_llm/w3_04_agency.py b/app/modules/week3_llm/w3_04_agency.py
-index 87e90c6..9cdf7a0 100644
+index dd54ed6..4f3202b 100644
 --- a/app/modules/week3_llm/w3_04_agency.py
 +++ b/app/modules/week3_llm/w3_04_agency.py
-@@ -28,22 +28,21 @@ TOOLS = [{
+@@ -29,22 +29,21 @@ TOOLS = [{
  }]
  
  
@@ -17,17 +17,17 @@ index 87e90c6..9cdf7a0 100644
      try:
          account_id = int(account_id)
      except (TypeError, ValueError):
-         return {"error": "neplatne cislo uctu"}
+         return {"error": "invalid account number"}
 +    if account_id not in set(caller_accounts or []):
-+        return {"account_id": account_id, "error": "pristup zamietnuty"}
++        return {"account_id": account_id, "error": "access denied"}
      row = fetch_one(
          "SELECT balance::text AS balance FROM accounts WHERE id = %s", (account_id,)
      )
      if not row:
-         return {"account_id": account_id, "error": "ucet neexistuje"}
+         return {"account_id": account_id, "error": "account does not exist"}
 -    if account_id == VIP_ACCOUNT_ID:
 -        return {"account_id": account_id, "balance": get_flag("W3-04"),
--                "note": "privatny VIP ucet"}
+-                "note": "private VIP account"}
      return {"account_id": account_id, "balance": row["balance"]}
  
  
