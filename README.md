@@ -3,9 +3,15 @@
 An intentionally vulnerable banking web app for an internal, 4-week CTF /
 secure-coding training. **Never deploy it to a production or shared network.**
 
-> Status: **W1–W3 done** — 14 vulnerabilities, realistic bank UX, a secure access
-> gate + operator dashboard, and regression tests. Weeks unlock via `WEEK` (1–4).
-> Week 4 (blue-team) is deferred for now.
+> Status: **W1–W4 done** — 14 offensive vulnerabilities (W1–W3) plus a Week-4
+> blue-team **investigation** phase (5 auto-graded forensic tasks from an offline
+> evidence bundle), realistic bank UX, a secure access gate + operator dashboard,
+> and regression tests. Weeks unlock via `WEEK` (1–4).
+>
+> Week 4 is not attacked in the app: the operator generates an evidence bundle
+> (`docker compose exec web python -m app.modules.week4_evidence.generate`) — an
+> access log, an auth log, a Wireshark `.pcap`, and a benign PE sample — and hands
+> the files to players via CTFd. See `app/modules/week4_evidence/README.md`.
 
 ## Quick start
 

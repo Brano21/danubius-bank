@@ -47,6 +47,15 @@ services:
       FLAG_W3_02: ${FLAG_W3_02:-RPC{unset_w3_02}}
       FLAG_W3_03: ${FLAG_W3_03:-RPC{unset_w3_03}}
       FLAG_W3_04: ${FLAG_W3_04:-RPC{unset_w3_04}}
+      # Week 4 flags are consumed by the evidence generator (offline artifacts),
+      # not emitted by any route. Present so the operator can generate the bundle
+      # from inside this container with the real values.
+      FLAG_W4_01: ${FLAG_W4_01:-RPC{unset_w4_01}}
+      FLAG_W4_02: ${FLAG_W4_02:-RPC{unset_w4_02}}
+      FLAG_W4_03: ${FLAG_W4_03:-RPC{unset_w4_03}}
+      FLAG_W4_04: ${FLAG_W4_04:-RPC{unset_w4_04}}
+      FLAG_W4_05: ${FLAG_W4_05:-RPC{unset_w4_05}}
+      WEEK4_KEY: ${WEEK4_KEY:-${GATE_ADMIN_PASSWORD:-change-me-admin}}
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
     depends_on:

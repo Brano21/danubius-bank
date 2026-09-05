@@ -176,10 +176,90 @@ Control code: RPC{
 
 ---
 
+## Week 4 — investigation (blue team, offline)
+
+Week 4 is **not attacked in the app** — it is a forensic exercise. The operator
+generates an evidence bundle and uploads the files to CTFd; players investigate
+them (Wireshark, `strings`, a little scripting). Nothing needs to be executed.
+
+**Generate the bundle** (prints the flag → location map):
+```bash
+docker compose exec web python -m app.modules.week4_evidence.generate --out /tmp/w4
+docker compose cp web:/tmp/w4 ./week4_out
+# or standalone (stdlib only): cd app/modules/week4_evidence && python generate.py --out out
+```
+Bundle: `access.log`, `auth.log`, `capture.pcap`, `Danubius-StatementViewer-setup.exe`
+(a **benign** sample — static analysis only), `README-for-players.txt`.
+
+The one incident runs through every artifact: attacker `198.51.100.66`
+(python-requests) breaks in, dumps card data, walks the API, and its dropped
+sample beacons to `updates.danubius-cdn.net`. Each task's "Find it" is the CTFd
+hint ladder.
+
+### W4-01 — entry point (log triage) · artifact: `auth.log` + `access.log`
+- **Find it:** in `access.log` one source IP behaves like a script (404 on
+  `/robots.txt`, then `POST /login` **500** — a SQL error — immediately followed by
+  `POST /login` **302** success). In `auth.log` the matching event is
+  `AUTH SUCCESS ... anomaly=credential-bypass` — a login that succeeded with no
+  valid credential, right after a failure.
+- **Flag:** that `auth.log` line carries `token=RPC{...}` → `FLAG_W4-01`.
+
+### W4-02 — breach scope (pcap) · artifact: `capture.pcap`
+- **Find it:** open in Wireshark, filter `http`. The attacker's
+  `GET /transactions?q=' UNION SELECT card_number,… FROM cards-- ` returns a table
+  of **5 card rows** — the PAN leak. *Follow HTTP Stream* on that response.
+- **Flag:** the response ends with `<!-- pan-export-audit: 5 records exfiltrated;
+  ref=RPC{...} -->` → `FLAG_W4-02`.
+
+### W4-03 — lateral movement (pcap) · artifact: `capture.pcap`
+- **Find it:** filter `http.request.uri contains "accounts"`. With a Bearer token
+  the attacker walks ids `/api/v1/accounts/1 → 2 → 3` (BOLA). Account **3** is the
+  VIP (Peter Kovac, balance 128,450).
+- **Flag:** the `accounts/3` JSON response has `"audit_ref":"RPC{...}"` → `FLAG_W4-03`.
+
+### W4-04 — the sample (static analysis) · artifact: the `.exe`
+- **Find it:** `strings Danubius-StatementViewer-setup.exe` (or a PE viewer) reveals
+  IOCs — C2 domain `updates.danubius-cdn.net`, mutex `Global\DanubiusSync-7f3a`,
+  registry `Software\Danubius\Updater`, WinHTTP imports — plus a hint `enc=xor1;b64`
+  and a `cfg=<base64>` blob.
+- **Flag:** base64-decode `cfg=`, then brute-force single-byte XOR until it starts
+  with `RPC{` → `FLAG_W4-04`.
+```bash
+python - <<'PY'
+import base64,re
+blob=re.search(rb"cfg=([A-Za-z0-9+/=]+)",open("Danubius-StatementViewer-setup.exe","rb").read()).group(1)
+raw=base64.b64decode(blob)
+for k in range(256):
+    c=bytes(b^k for b in raw)
+    if c.startswith(b"RPC{"): print("key",k,c.decode()); break
+PY
+```
+
+### W4-05 — command & control (pcap reassembly) · artifact: `capture.pcap`
+- **Find it:** the C2 domain from W4-04 points the way — filter
+  `http.host contains "danubius-cdn"`. A series of `GET /beacon?…&n=0&d=…`,
+  `n=1&d=…`, … carries the stolen bundle as base64 **chunks**.
+- **Flag:** concatenate the `d=` values in `n` order and base64-decode → `FLAG_W4-05`.
+```bash
+python - <<'PY'
+import base64,re
+data=open("capture.pcap","rb").read()
+parts=sorted(re.findall(rb"n=(\d+)&d=([A-Za-z0-9+/=]+)",data),key=lambda p:int(p[0]))
+print(base64.b64decode(b"".join(d for _,d in parts)).decode())
+PY
+```
+> W4-04 feeds W4-05: the domain you recover from the sample is the capture filter
+> for the beacon. Good graduated-hint material.
+
+---
+
 ## Automated verification
 
 ```bash
 python tests/run_tests.py             # W1+W2 (deterministic) — prints every flag
 python tests/run_tests.py --with-llm  # also W3 (slower, LLM)
+python tests/test_week4.py            # W4 (offline) — builds the bundle, confirms all 5 flags recover
 ```
-It runs everything through the gate and reports PASS + flag per task.
+The first runs everything through the gate; `test_week4.py` needs no running
+stack — it generates the evidence bundle in-process and re-derives each flag by
+the intended technique (log grep, pcap stream reassembly, sample deobfuscation).

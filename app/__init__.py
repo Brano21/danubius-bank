@@ -34,7 +34,7 @@ def create_app():
 
     # --- Week 4 ------------------------------------------------------------
     if week >= 4:
-        from .modules.week4_evidence import bp as week4_bp
+        from .modules.week4_evidence.web import bp as week4_bp
         app.register_blueprint(week4_bp)
 
     @app.context_processor

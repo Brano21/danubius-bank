@@ -1,10 +1,12 @@
-# Regression tests (W1–W3)
+# Regression tests (W1–W4)
 
 They verify that the vulnerabilities **still work** (the flag is still reachable
 via each exploit). Run them after any change to catch that you broke something.
 
-The tests go **through the gate** (as a real player), so they also confirm the
-gate did not break the exploits.
+The W1–W3 tests go **through the gate** (as a real player), so they also confirm
+the gate did not break the exploits. The W4 test is **offline**: it generates the
+evidence bundle in-process and re-derives all 5 flags by the intended technique
+(log grep, pcap stream reassembly, sample deobfuscation) — no running stack needed.
 
 ## Run
 
@@ -12,6 +14,7 @@ gate did not break the exploits.
 # the app must be running (docker compose up); ideally WEEK=3 so W2/W3 are unlocked
 python tests/run_tests.py             # W1 (+ W2/W3 if unlocked)
 python tests/run_tests.py --with-llm  # also W3 (slow, the LLM is nondeterministic)
+python tests/test_week4.py            # W4 (offline) — no Docker required
 ```
 
 - **W1/W2** are deterministic and decide the exit code (`0` = OK, `1` = failure).
