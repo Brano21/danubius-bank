@@ -4,7 +4,7 @@
   <h1>Log in</h1>
   {% if info %}<p class="ok">{{ info }}</p>{% endif %}
   {% if error %}<p class="err">{{ error }}</p>{% endif %}
-  <form class="stack" method="post">
+  <form class="stack" method="post" action="{{ url_for('week1.login') }}">
     <label>Username</label>
     <input name="username" autofocus>
     <label>Password</label>

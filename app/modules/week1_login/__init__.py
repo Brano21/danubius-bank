@@ -25,6 +25,8 @@ def index():
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     error = None
+    info = ("Registration successful. Log in with your email and password."
+            if request.args.get("registered") else None)
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
@@ -45,7 +47,7 @@ def login():
             login_user(row["id"])
             return redirect(url_for("week1.dashboard"))
         error = "Invalid credentials."
-    return render_template("login.html", error=error)
+    return render_template("login.html", error=error, info=info)
 
 
 @bp.route("/register", methods=["GET", "POST"])
@@ -77,14 +79,18 @@ def register():
             iban = "SK" + "".join(secrets.choice("0123456789") for _ in range(22))
             cur.execute(
                 "INSERT INTO accounts (client_id, iban, balance, currency, account_limit) "
-                "VALUES (%s, %s, 0, 'EUR', 5000)",
+                "VALUES (%s, %s, 100, 'EUR', 5000) RETURNING id",
                 (cid, iban),
             )
-            cur.close()
-            return render_template(
-                "login.html", error=None,
-                info="Registration successful. Log in with your email and password.",
+            acc_id = cur.fetchone()[0]
+            # welcome bonus so a new account is not empty
+            cur.execute(
+                "INSERT INTO transactions (account_id, amount, currency, counterparty, "
+                "note, direction) VALUES (%s, 100, 'EUR', 'Danubius Bank', 'Welcome bonus', 'in')",
+                (acc_id,),
             )
+            cur.close()
+            return redirect(url_for("week1.login", registered=1))
     return render_template("register.html", error=error)
 
 
