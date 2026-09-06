@@ -132,18 +132,14 @@ def transactions():
         "AND counterparty ILIKE '%" + q + "%' "
         "ORDER BY ts DESC"
     )
-    # The DB error is surfaced inline (error-based SQLi) rather than as a blank
-    # 500: it is the intended signal that the search is injectable and it guides
-    # the UNION column-count step. It exposes no flag (flags come from env, never
-    # from the query), so isolation is preserved. Under autocommit a failed
-    # statement does not poison the connection, so no rollback is needed.
-    rows, db_error = [], None
-    try:
-        rows = fetch_all(sql)
-    except Exception as exc:  # noqa: BLE001
-        db_error = str(exc).strip()
-    return render_template("transactions.html", rows=rows, q=q, client=client,
-                           db_error=db_error)
+    # Deliberately NOT wrapped in try/except: a malformed injection raises and
+    # surfaces as an HTTP 500 (via the branded error handler), which is the
+    # intended error-based signal a tester sees in Burp/ZAP. The generic 500
+    # does NOT reveal the DB message (e.g. the UNION column count), so it hints
+    # that the field is injectable without spoon-feeding the technique; probing
+    # still works by status code (ORDER BY 5 -> 500, ORDER BY 4 -> 200).
+    rows = fetch_all(sql)
+    return render_template("transactions.html", rows=rows, q=q, client=client)
 
 
 @bp.route("/search")
