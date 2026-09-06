@@ -50,6 +50,7 @@ chmod 600 .env
 docker compose up -d --build
 
 # --- Bring up CTFd (platform on :80) ---
+export CTFD_SECRET_KEY=$(openssl rand -hex 16)
 docker compose -f deploy/ctfd/docker-compose.yml up -d
 
 # --- Wait for CTFd, then set it up + seed the challenges ---

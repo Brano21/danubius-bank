@@ -12,6 +12,9 @@ services:
     ports:
       - "80:8000"
     environment:
+      # CTFd needs a stable SECRET_KEY when WORKERS > 1 (sessions across workers).
+      # Local default below; in AWS cloud-init passes a random CTFD_SECRET_KEY.
+      - SECRET_KEY=${CTFD_SECRET_KEY:-danubius-ctfd-dev-secret-change-me}
       - UPLOAD_FOLDER=/var/uploads
       - DATABASE_URL=mysql+pymysql://ctfd:ctfd@ctfd-db/ctfd
       - REDIS_URL=redis://ctfd-cache:6379

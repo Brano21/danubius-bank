@@ -131,9 +131,14 @@ def create_challenge(c, nonce, w4dir):
             p = os.path.join(w4dir, fn)
             if os.path.exists(p):
                 with open(p, "rb") as fh:
-                    api("POST", "/api/v1/files", nonce, files={"file": (fn, fh)},
-                        data={"challenge": cid, "type": "challenge"})
-                nfiles += 1
+                    # multipart uploads need the nonce in the FORM DATA (not just
+                    # the CSRF-Token header) or CTFd answers 403.
+                    r = api("POST", "/api/v1/files", nonce, files={"file": (fn, fh)},
+                            data={"challenge": cid, "type": "challenge", "nonce": nonce})
+                if r.status_code == 200:
+                    nfiles += 1
+                else:
+                    print("    file %s upload failed (%s)" % (fn, r.status_code))
     print("  OK   %s  (%d pts, %d hints, %d files)" %
           (c["key"], POINTS[c["difficulty"]], len(c.get("hints", [])), nfiles))
 
