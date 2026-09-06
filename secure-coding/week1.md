@@ -5,7 +5,7 @@ and a hidden reference fix (`fixes/patches/<id>.patch`).
 
 ---
 
-## W1-01 — SQL injection: login bypass (A05 Injection)
+## W1-01 — SQL injection: login bypass (A03 Injection)
 
 ### Vulnerable snippet — `app/modules/week1_login/__init__.py`
 ```python
@@ -40,7 +40,7 @@ treats the symptom rather than the mixing of code and data.
 
 ---
 
-## W1-02 — SQL injection: UNION card leak (A05 Injection)
+## W1-02 — SQL injection: UNION card leak (A03 Injection)
 
 ### Vulnerable snippet — `app/modules/week1_login/__init__.py`
 ```python
@@ -102,7 +102,7 @@ encoding) and mangles data; escape **on output**, contextually.
 
 ---
 
-## W1-04 — Reflected XSS in search (A05 / XSS)
+## W1-04 — Reflected XSS in search (A03 / XSS)
 
 ### Vulnerable snippet — `app/templates/search.html`
 ```jinja
@@ -126,7 +126,7 @@ autoescape handles the HTML context).
 
 ---
 
-## W1-05 — OS command injection in export (A05 Injection)
+## W1-05 — OS command injection in export (A03 Injection)
 
 ### Vulnerable snippet — `exporter/app.py`
 ```python

@@ -185,6 +185,17 @@ danubius-bank/
 
 ## ☁️ Deploy to the cloud
 
-Infrastructure-as-code to stand up the whole stack — the vulnerable app **and** the
-CTFd platform — on AWS, behind login, for solo or team (max 3) play, lives in
-[`deploy/`](deploy/). See [`deploy/README.md`](deploy/README.md).
+[`deploy/`](deploy/) has Terraform + cloud-init that stands up the **whole stack**
+on AWS — the vulnerable app **and** the CTFd platform — with fresh random flags
+wired into both and all 19 challenges seeded. See **[`deploy/README.md`](deploy/README.md)**.
+
+**Players & teams (two logins, by design):**
+1. **CTFd** (`:80`) — the scoreboard. Players **self-register** and **create/join a
+   team** (team mode, max 3; solo = a team of one), then read challenges and submit
+   flags.
+2. **App gate** (`:8080`) — a thin, operator-managed door in front of the target
+   (no self-registration). Give everyone one **shared** gate credential (Juice-Shop
+   style — `tester`/`test123` ships in `gate/players.json`), or add per-team
+   accounts. Inside the bank they **register** (`/register`) or use the W1-01 bypass.
+
+Full flow and troubleshooting: [`deploy/README.md`](deploy/README.md).

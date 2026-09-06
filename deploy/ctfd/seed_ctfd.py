@@ -34,6 +34,8 @@ ADMIN_PW = os.environ.get("CTFD_ADMIN_PASSWORD", "change-me-admin")
 ADMIN_EMAIL = os.environ.get("CTFD_ADMIN_EMAIL", "admin@danubius.local")
 MAX_TEAM_SIZE = os.environ.get("MAX_TEAM_SIZE", "3")
 APP_TARGET = os.environ.get("APP_TARGET_URL", "http://localhost:8080").rstrip("/")
+GATE_PLAYER_USER = os.environ.get("GATE_PLAYER_USER", "tester")
+GATE_PLAYER_PW = os.environ.get("GATE_PLAYER_PW", "test123")
 POINTS = {"Easy": 100, "Medium": 200, "Hard": 300}
 
 s = requests.Session()
@@ -110,7 +112,9 @@ def create_challenge(c, nonce, w4dir):
         return
     desc = c["description"]
     if c.get("target"):
-        desc += "\n\n**Target:** " + APP_TARGET + "/"
+        desc += ("\n\n**Target:** " + APP_TARGET + "/ — sign in at the gate with `"
+                 + GATE_PLAYER_USER + "` / `" + GATE_PLAYER_PW + "`, then register a "
+                 "bank account or use the W1-01 login bypass.")
     body = {"name": c["name"], "category": c["category"], "description": desc,
             "value": POINTS[c["difficulty"]], "state": "visible", "type": "standard"}
     r = api("POST", "/api/v1/challenges", nonce, json=body)

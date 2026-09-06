@@ -30,7 +30,7 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        # VULN: W1-01 SQL injection (A05) - the login query is built by string
+        # VULN: W1-01 SQL injection (A03) - the login query is built by string
         # concatenation, so input breaks out of the quotes. A payload in the
         # username field, e.g.  ' OR '1'='1'--  , comments out the password
         # check and matches the first row (client id 1). No parameterization,
@@ -130,7 +130,7 @@ def transactions():
     )
     acct_id = acct["id"] if acct else 0
     q = request.args.get("q", "")
-    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
+    # VULN: W1-02 SQL injection (A03), UNION-based. The search term q is
     # concatenated into the query, so a UNION SELECT appends rows from another
     # table - e.g. cards - leaking card numbers. The visible columns are text
     # (amount is cast to text), so a working UNION needs four text columns.
@@ -164,7 +164,7 @@ def search():
     nonce = secrets.token_hex(8)
     session["w1_04_nonce"] = nonce
     solved = session.get("w1_04_solved", False)
-    # VULN: W1-04 reflected XSS (A05 / XSS). q is echoed back into the page
+    # VULN: W1-04 reflected XSS (A03 / XSS). q is echoed back into the page
     # WITHOUT escaping (search.html renders it with |safe), so a payload like
     #   <img src=x onerror="fetch('/search/solved?n='+window.__proof)">
     # executes in the visitor's browser and completes the task.

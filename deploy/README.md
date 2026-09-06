@@ -68,14 +68,36 @@ seed CTFd). Watch it: `ssh ubuntu@<ip>` then `tail -f /var/log/danubius-deploy.l
    the max team size, and creates all 19 challenges (description + hints + the
    matching random flag), attaching the Week-4 evidence files.
 
-## Players
+## Players & teams — how they register and reach the target
 
-- Go to `http://<ip>/`, **register / sign in** to CTFd, create or join a **team**
-  (solo = a team of one; max size is `max_team_size`).
-- Read a challenge → attack the target at `http://<ip>:8080/` (the app gate; a
-  player account is in `gate/players.json`, or the challenge tells them) → submit
-  the flag back in CTFd.
-- Week-4 challenges have the evidence files attached — download and investigate.
+There are **two logins**, by design:
+
+**1. CTFd** (`http://<ip>/`) — the scoreboard. Players **self-register** (username +
+email + password), then **create or join a team** (CTFd runs in *team mode*; a solo
+player is just a team of one; max size = `max_team_size`, default **3**). Scoring is
+per team. This is where they read challenges and submit flags. Week-4 challenges
+have the evidence files attached — download and investigate.
+
+**2. The target app gate** (`http://<ip>:8080/`) — the vulnerable bank sits behind a
+thin access gate so only known players can touch it. Gate accounts are
+**operator-managed** (there is *no* self-registration on the gate). Two ways to run
+it for a CTF:
+
+- **Shared credential (simplest, recommended).** The app is multi-tenant
+  (Juice-Shop style — one instance, many players), so give *everyone* the same gate
+  login. The repo ships `tester` / `test123` in `gate/players.json`; the seeded
+  challenges already print it in their **Target** line, or announce it via a CTFd
+  notification.
+- **Per-team gate accounts.** Add one line per team to `gate/players.json`
+  (`"team-name": "password"`) and `docker compose restart gate` on the host.
+
+Once past the gate, players are on the real bank: they either **register a bank
+account** (`/register`) or walk in with the **W1-01** login bypass — both work, the
+flags are the same for everyone.
+
+> **Player flow:** register on CTFd → join a team → open a challenge → it points at
+> `http://<ip>:8080/` → sign in at the gate (shared credential) → solve → submit the
+> flag back in CTFd.
 
 ## Cost & teardown
 

@@ -1,4 +1,4 @@
-"""W1-05 - OS command injection via the PDF export (A05).
+"""W1-05 - OS command injection via the PDF export (A03).
 
 The vulnerability itself lives in the isolated exporter service
 (exporter/app.py) - the only container that yields a shell. This module is just
