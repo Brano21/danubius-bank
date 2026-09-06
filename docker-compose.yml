@@ -87,7 +87,11 @@ services:
       - gate_data:/data
       - ./gate/players.json:/app/players.json:ro
     ports:
-      - "8080:8000"
+      # Bind the published port explicitly on IPv4 all-interfaces. Docker Desktop
+      # otherwise tends to expose it via an IPv6 dual-stack listener only, which
+      # some clients (e.g. Burp's JVM) fail to reach ("No response from remote
+      # server") even though curl/browser retry through it fine.
+      - "0.0.0.0:8080:8000"
     depends_on:
       - web
 
