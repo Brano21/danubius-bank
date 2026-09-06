@@ -20,7 +20,34 @@ at CTFd and at the app gate on top of that.
                                           └────────────────────────────────────┘
 ```
 
-## Prerequisites
+## Run it locally first (no AWS)
+
+You can run the exact same two stacks on your own machine to try it end-to-end:
+
+```bash
+# 1) the vulnerable app (from the repo root)
+cp .env.example .env
+WEEK=4 docker compose up -d --build                        # gate → http://localhost:8080
+
+# 2) CTFd
+docker compose -f deploy/ctfd/docker-compose.yml up -d     # CTFd → http://localhost:80
+
+# 3) set up CTFd (team mode) + seed all 19 challenges with matching flags
+pip install requests
+set -a; . .env; set +a                                     # load the FLAG_* values
+CTFD_URL=http://localhost CTF_NAME="Danubius Bank CTF" \
+CTFD_ADMIN_USER=ctfadmin CTFD_ADMIN_PASSWORD='change-me' \
+APP_TARGET_URL=http://localhost:8080 MAX_TEAM_SIZE=3 \
+python3 deploy/ctfd/seed_ctfd.py
+```
+
+Open CTFd at `http://localhost/` (register + join a team), read a challenge, attack
+the app at `http://localhost:8080/`, submit the flag. Tear down with
+`docker compose down` in both places (add `-v` to wipe data).
+
+---
+
+## Prerequisites (AWS)
 
 - **Terraform ≥ 1.3** and **AWS credentials** configured (`aws configure`, or env
   vars / SSO). The identity needs EC2 + VPC permissions.
