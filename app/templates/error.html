@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }} - {{ bank_name }}{% endblock %}
+{% block content %}
+  <h1>{{ code }} &mdash; {{ title or "Error" }}</h1>
+  <p class="lead">{{ message }}</p>
+  <p style="margin-top:16px">
+    <a class="btn" href="{{ url_for('week1.index') }}">Back to Danubius Bank</a>
+  </p>
+{% endblock %}

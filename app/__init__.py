@@ -44,4 +44,26 @@ def create_app():
         from .auth import current_client
         return {"WEEK": week, "bank_name": "Danubius Bank", "client": current_client()}
 
+    # Branded error pages so unexpected failures look like the bank, not a raw
+    # Flask stack page. NOTE: injectable endpoints (e.g. the W1-02 transaction
+    # search) still surface the DB error inline on purpose - that is the intended
+    # "it's injectable" signal; these generic handlers only cover the rest.
+    from flask import render_template
+
+    @app.errorhandler(404)
+    def handle_404(_e):
+        return render_template("error.html", code=404, title="Page not found",
+                               message="We couldn't find the page you were "
+                                       "looking for."), 404
+
+    @app.errorhandler(500)
+    def handle_500(_e):
+        db.close_db()  # drop a possibly-broken connection so the page can render
+        try:
+            return render_template("error.html", code=500, title="Service error",
+                                   message="Something went wrong on our side. "
+                                           "Please try again in a moment."), 500
+        except Exception:  # noqa: BLE001 - never recurse into another 500
+            return "Internal Server Error", 500
+
     return app

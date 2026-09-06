@@ -132,8 +132,18 @@ def transactions():
         "AND counterparty ILIKE '%" + q + "%' "
         "ORDER BY ts DESC"
     )
-    rows = fetch_all(sql)
-    return render_template("transactions.html", rows=rows, q=q, client=client)
+    # The DB error is surfaced inline (error-based SQLi) rather than as a blank
+    # 500: it is the intended signal that the search is injectable and it guides
+    # the UNION column-count step. It exposes no flag (flags come from env, never
+    # from the query), so isolation is preserved. Under autocommit a failed
+    # statement does not poison the connection, so no rollback is needed.
+    rows, db_error = [], None
+    try:
+        rows = fetch_all(sql)
+    except Exception as exc:  # noqa: BLE001
+        db_error = str(exc).strip()
+    return render_template("transactions.html", rows=rows, q=q, client=client,
+                           db_error=db_error)
 
 
 @bp.route("/search")
