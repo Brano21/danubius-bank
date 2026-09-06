@@ -42,11 +42,19 @@ def login():
             + password
             + "'"
         )
-        row = fetch_one(sql)
-        if row:
-            login_user(row["id"])
-            return redirect(url_for("week1.dashboard"))
-        error = "Invalid credentials."
+        try:
+            row = fetch_one(sql)
+        except Exception as exc:  # noqa: BLE001
+            # W1-01 is an intro task: surface the raw DB error (error-based SQLi)
+            # so a malformed quote visibly breaks the query - the intended
+            # "it's injectable" tell, in the browser AND in Burp/ZAP. Shown as-is
+            # from the backend, not prettified. Exposes no flag.
+            error = str(exc).strip()
+        else:
+            if row:
+                login_user(row["id"])
+                return redirect(url_for("week1.dashboard"))
+            error = "Invalid credentials."
     return render_template("login.html", error=error, info=info)
 
 
@@ -132,14 +140,18 @@ def transactions():
         "AND counterparty ILIKE '%" + q + "%' "
         "ORDER BY ts DESC"
     )
-    # Deliberately NOT wrapped in try/except: a malformed injection raises and
-    # surfaces as an HTTP 500 (via the branded error handler), which is the
-    # intended error-based signal a tester sees in Burp/ZAP. The generic 500
-    # does NOT reveal the DB message (e.g. the UNION column count), so it hints
-    # that the field is injectable without spoon-feeding the technique; probing
-    # still works by status code (ORDER BY 5 -> 500, ORDER BY 4 -> 200).
-    rows = fetch_all(sql)
-    return render_template("transactions.html", rows=rows, q=q, client=client)
+    # W1-02 is an intro task: like W1-01, surface the raw DB error inline
+    # (error-based SQLi) instead of a blank 500 - the intended injectable signal,
+    # visible in the browser and in Burp/ZAP. Shown as-is from the backend. It
+    # exposes no flag (flags come from env, never the query), so isolation holds.
+    # Under autocommit a failed statement does not poison the connection.
+    rows, db_error = [], None
+    try:
+        rows = fetch_all(sql)
+    except Exception as exc:  # noqa: BLE001
+        db_error = str(exc).strip()
+    return render_template("transactions.html", rows=rows, q=q, client=client,
+                           db_error=db_error)
 
 
 @bp.route("/search")

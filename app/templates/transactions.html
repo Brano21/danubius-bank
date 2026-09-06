@@ -6,6 +6,9 @@
     <input name="q" value="{{ q }}" placeholder="search by counterparty" size="40">
     <button type="submit">Search</button>
   </form>
+  {% if db_error %}
+    <p class="err" style="max-width:none;font-family:ui-monospace,Consolas,monospace">{{ db_error }}</p>
+  {% endif %}
   <table>
     <tr><th>Counterparty</th><th>Amount</th><th>Note</th><th>Direction</th></tr>
     {% for r in rows %}
