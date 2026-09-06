@@ -19,7 +19,7 @@ Prerequisites: **Docker Desktop** (running), ~16 GB RAM (for Ollama in week 3).
 
 ```bash
 cp .env.example .env                  # adjust flags / passwords for your run
-WEEK=3 docker compose up --build      # gate on http://localhost:8080
+WEEK=4 docker compose up --build      # full lab (W1-W4); gate on http://localhost:8080
 ```
 
 ## Default login

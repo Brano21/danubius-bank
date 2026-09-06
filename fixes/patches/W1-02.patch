@@ -1,27 +1,32 @@
 diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
-index 05df309..72007d6 100644
+index cb63340..3c934e0 100644
 --- a/app/modules/week1_login/__init__.py
 +++ b/app/modules/week1_login/__init__.py
-@@ -116,17 +116,13 @@ def transactions():
-     )
-     acct_id = acct["id"] if acct else 0
-     q = request.args.get("q", "")
--    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
--    # concatenated into the query, so a UNION SELECT appends rows from another
--    # table - e.g. cards - leaking card numbers. The visible columns are text
--    # (amount is cast to text), so a working UNION needs four text columns.
+@@ -134,12 +134,8 @@ def transactions():
+     # concatenated into the query, so a UNION SELECT appends rows from another
+     # table - e.g. cards - leaking card numbers. The visible columns are text
+     # (amount is cast to text), so a working UNION needs four text columns.
 -    sql = (
-+    # FIX W1-02: parameterized query; the search term is bound as a value, so a
-+    # UNION cannot be injected (account_id is a trusted int from the session).
-+    rows = fetch_all(
-         "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
+-        "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
 -        "WHERE account_id = " + str(acct_id) + " "
 -        "AND counterparty ILIKE '%" + q + "%' "
 -        "ORDER BY ts DESC"
-+        "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
-+        (acct_id, "%" + q + "%"),
-     )
--    rows = fetch_all(sql)
-     return render_template("transactions.html", rows=rows, q=q, client=client)
- 
- 
+-    )
++    # FIX (W1-02): parameterize q AND the account id; the % wildcards are bound as
++    # part of the value, so nothing in q can alter the query structure (no UNION).
+     # W1-02 is an intro task: like W1-01, surface the raw DB error inline
+     # (error-based SQLi) instead of a blank 500 - the intended injectable signal,
+     # visible in the browser and in Burp/ZAP. Shown as-is from the backend. It
+@@ -147,7 +143,11 @@ def transactions():
+     # Under autocommit a failed statement does not poison the connection.
+     rows, db_error = [], None
+     try:
+-        rows = fetch_all(sql)
++        rows = fetch_all(
++            "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
++            "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
++            (acct_id, "%" + q + "%"),
++        )
+     except Exception as exc:  # noqa: BLE001
+         db_error = str(exc).strip()
+     return render_template("transactions.html", rows=rows, q=q, client=client,

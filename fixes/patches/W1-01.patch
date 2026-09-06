@@ -1,29 +1,27 @@
 diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
-index 05df309..f82e2be 100644
+index cb63340..177cc08 100644
 --- a/app/modules/week1_login/__init__.py
 +++ b/app/modules/week1_login/__init__.py
-@@ -28,19 +28,12 @@ def login():
-     if request.method == "POST":
-         username = request.form.get("username", "")
-         password = request.form.get("password", "")
--        # VULN: W1-01 SQL injection (A05) - the login query is built by string
--        # concatenation, so input breaks out of the quotes. A payload in the
--        # username field, e.g.  ' OR '1'='1'--  , comments out the password
--        # check and matches the first row (client id 1). No parameterization,
--        # so a WAF / front-end validation on password length does not help.
+@@ -35,15 +35,14 @@ def login():
+         # username field, e.g.  ' OR '1'='1'--  , comments out the password
+         # check and matches the first row (client id 1). No parameterization,
+         # so a WAF / front-end validation on password length does not help.
 -        sql = (
 -            "SELECT id FROM clients WHERE username = '"
 -            + username
 -            + "' AND password = '"
 -            + password
 -            + "'"
-+        # FIX W1-01: parameterized query - user input is bound as data, never
-+        # concatenated into the SQL text, so it cannot alter the query.
-+        row = fetch_one(
-+            "SELECT id FROM clients WHERE username = %s AND password = %s",
-+            (username, password),
-         )
--        row = fetch_one(sql)
-         if row:
-             login_user(row["id"])
-             return redirect(url_for("week1.dashboard"))
+-        )
++        # FIX (W1-01): parameterized query - the username/password reach the
++        # database as DATA, never as part of the SQL text, so they cannot change
++        # the query structure. Blacklisting quotes/keywords is NOT a fix.
+         try:
+-            row = fetch_one(sql)
++            row = fetch_one(
++                "SELECT id FROM clients WHERE username = %s AND password = %s",
++                (username, password),
++            )
+         except Exception as exc:  # noqa: BLE001
+             # W1-01 is an intro task: surface the raw DB error (error-based SQLi)
+             # so a malformed quote visibly breaks the query - the intended

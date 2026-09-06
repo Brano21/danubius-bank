@@ -79,6 +79,8 @@ browser
 - `WEEK=1` → sections 2 and 3 (web, W1)
 - `WEEK=2` → + API (4, W2)
 - `WEEK=3` → + Danubka (5, W3)
+- `WEEK=4` → + blue-team evidence generator (operator-only `/evidence`; W4 is
+  offline investigation, not a web attack surface)
 
 A locked week is **not registered** — its paths do not exist.
 

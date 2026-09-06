@@ -1,55 +1,58 @@
 diff --git a/app/modules/week1_login/__init__.py b/app/modules/week1_login/__init__.py
-index 05df309..f28b66a 100644
+index cb63340..655a3ac 100644
 --- a/app/modules/week1_login/__init__.py
 +++ b/app/modules/week1_login/__init__.py
-@@ -28,19 +28,12 @@ def login():
-     if request.method == "POST":
-         username = request.form.get("username", "")
-         password = request.form.get("password", "")
--        # VULN: W1-01 SQL injection (A05) - the login query is built by string
--        # concatenation, so input breaks out of the quotes. A payload in the
--        # username field, e.g.  ' OR '1'='1'--  , comments out the password
--        # check and matches the first row (client id 1). No parameterization,
--        # so a WAF / front-end validation on password length does not help.
+@@ -35,15 +35,14 @@ def login():
+         # username field, e.g.  ' OR '1'='1'--  , comments out the password
+         # check and matches the first row (client id 1). No parameterization,
+         # so a WAF / front-end validation on password length does not help.
 -        sql = (
 -            "SELECT id FROM clients WHERE username = '"
 -            + username
 -            + "' AND password = '"
 -            + password
 -            + "'"
-+        # FIX W1-01: parameterized query - user input is bound as data, never
-+        # concatenated into the SQL text, so it cannot alter the query.
-+        row = fetch_one(
-+            "SELECT id FROM clients WHERE username = %s AND password = %s",
-+            (username, password),
-         )
--        row = fetch_one(sql)
-         if row:
-             login_user(row["id"])
-             return redirect(url_for("week1.dashboard"))
-@@ -116,17 +109,13 @@ def transactions():
-     )
-     acct_id = acct["id"] if acct else 0
-     q = request.args.get("q", "")
--    # VULN: W1-02 SQL injection (A05), UNION-based. The search term q is
--    # concatenated into the query, so a UNION SELECT appends rows from another
--    # table - e.g. cards - leaking card numbers. The visible columns are text
--    # (amount is cast to text), so a working UNION needs four text columns.
+-        )
++        # FIX (W1-01): parameterized query - the username/password reach the
++        # database as DATA, never as part of the SQL text, so they cannot change
++        # the query structure. Blacklisting quotes/keywords is NOT a fix.
+         try:
+-            row = fetch_one(sql)
++            row = fetch_one(
++                "SELECT id FROM clients WHERE username = %s AND password = %s",
++                (username, password),
++            )
+         except Exception as exc:  # noqa: BLE001
+             # W1-01 is an intro task: surface the raw DB error (error-based SQLi)
+             # so a malformed quote visibly breaks the query - the intended
+@@ -134,12 +133,8 @@ def transactions():
+     # concatenated into the query, so a UNION SELECT appends rows from another
+     # table - e.g. cards - leaking card numbers. The visible columns are text
+     # (amount is cast to text), so a working UNION needs four text columns.
 -    sql = (
-+    # FIX W1-02: parameterized query; the search term is bound as a value, so a
-+    # UNION cannot be injected (account_id is a trusted int from the session).
-+    rows = fetch_all(
-         "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
+-        "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
 -        "WHERE account_id = " + str(acct_id) + " "
 -        "AND counterparty ILIKE '%" + q + "%' "
 -        "ORDER BY ts DESC"
-+        "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
-+        (acct_id, "%" + q + "%"),
-     )
--    rows = fetch_all(sql)
-     return render_template("transactions.html", rows=rows, q=q, client=client)
- 
- 
+-    )
++    # FIX (W1-02): parameterize q AND the account id; the % wildcards are bound as
++    # part of the value, so nothing in q can alter the query structure (no UNION).
+     # W1-02 is an intro task: like W1-01, surface the raw DB error inline
+     # (error-based SQLi) instead of a blank 500 - the intended injectable signal,
+     # visible in the browser and in Burp/ZAP. Shown as-is from the backend. It
+@@ -147,7 +142,11 @@ def transactions():
+     # Under autocommit a failed statement does not poison the connection.
+     rows, db_error = [], None
+     try:
+-        rows = fetch_all(sql)
++        rows = fetch_all(
++            "SELECT counterparty, amount::text AS amount, note, direction FROM transactions "
++            "WHERE account_id = %s AND counterparty ILIKE %s ORDER BY ts DESC",
++            (acct_id, "%" + q + "%"),
++        )
+     except Exception as exc:  # noqa: BLE001
+         db_error = str(exc).strip()
+     return render_template("transactions.html", rows=rows, q=q, client=client,
 diff --git a/app/modules/week2_api/w2_01_bola.py b/app/modules/week2_api/w2_01_bola.py
 index 4213ff9..6e571fd 100644
 --- a/app/modules/week2_api/w2_01_bola.py
@@ -242,10 +245,10 @@ index 21bfee0..dba609a 100644
 +{{ note }}{# FIX W1-03: escape output (autoescape), no |safe #}
 \ No newline at end of file
 diff --git a/app/templates/search.html b/app/templates/search.html
-index 88ea3bb..1cad19e 100644
+index cc51193..851bd2c 100644
 --- a/app/templates/search.html
 +++ b/app/templates/search.html
-@@ -8,7 +8,7 @@
+@@ -11,7 +11,7 @@
      <button type="submit">Search</button>
    </form>
    {% if q %}
