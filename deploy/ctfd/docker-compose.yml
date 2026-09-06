@@ -1,0 +1,55 @@
+# CTFd platform for the Danubius Bank CTF. Runs alongside the vulnerable app
+# (which is the repo-root docker-compose.yml). CTFd is the login-gated scoreboard
+# where players read challenges and submit flags; the app on :8080 is the target.
+#
+#   docker compose -f deploy/ctfd/docker-compose.yml up -d
+#
+# DB/redis are only on the internal compose network; only CTFd (:80) is published.
+services:
+  ctfd:
+    image: ctfd/ctfd:3.7.5
+    restart: always
+    ports:
+      - "80:8000"
+    environment:
+      - UPLOAD_FOLDER=/var/uploads
+      - DATABASE_URL=mysql+pymysql://ctfd:ctfd@ctfd-db/ctfd
+      - REDIS_URL=redis://ctfd-cache:6379
+      - WORKERS=2
+      - LOG_FOLDER=/var/log/CTFd
+      - ACCESS_LOG=-
+      - ERROR_LOG=-
+    volumes:
+      - ctfd-uploads:/var/uploads
+      - ctfd-logs:/var/log/CTFd
+    depends_on:
+      - ctfd-db
+      - ctfd-cache
+
+  ctfd-db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=ctfd-root-change-me
+      - MYSQL_USER=ctfd
+      - MYSQL_PASSWORD=ctfd
+      - MYSQL_DATABASE=ctfd
+    volumes:
+      - ctfd-db:/var/lib/mysql
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --wait_timeout=28800
+
+  ctfd-cache:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - ctfd-redis:/data
+
+volumes:
+  ctfd-uploads:
+  ctfd-logs:
+  ctfd-db:
+  ctfd-redis:

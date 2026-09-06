@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and edit. `terraform.tfvars` is git-ignored.
+
+# REQUIRED: scope access to your IP so the lab is not open to the whole internet.
+# Find your IP: https://checkip.amazonaws.com  (append /32 for a single address)
+allowed_cidr        = "203.0.113.7/32"
+
+# REQUIRED: CTFd admin password (change it!)
+ctfd_admin_password = "change-me-strong-password"
+
+# Optional overrides:
+# region         = "eu-central-1"
+# instance_type  = "m5.2xlarge"   # 32 GB RAM (app + LLM + CTFd). m5.large + week=2 for a cheap web-only lab.
+# week           = 4              # 1-4; 4 = full lab
+# ssh_key_name   = "my-ec2-key"   # an EXISTING EC2 key pair; omit to disable SSH
+# repo_url       = "https://github.com/Brano21/danubius-bank.git"
+# repo_ref       = "master"
+# max_team_size  = 3
+# ctf_name       = "Danubius Bank CTF"
+# ctfd_admin_user = "ctfadmin"

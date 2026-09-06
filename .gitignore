@@ -3,3 +3,9 @@ __pycache__/
 .env
 *.log
 .DS_Store
+deploy/terraform/.terraform/
+deploy/terraform/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+deploy/terraform/terraform.tfvars
+crash.log
