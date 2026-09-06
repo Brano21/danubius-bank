@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Search - {{ bank_name }}{% endblock %}
 {% block content %}
+  <!-- window.__proof is a per-page verification token; changes every load. A
+       solved search-XSS challenge must present this exact value (read from THIS
+       page by your own executed script) - a direct request without it is rejected. -->
   <script>window.__proof="{{ nonce }}";</script>
   <h1>Site search</h1>
   <form method="get">
