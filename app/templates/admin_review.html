@@ -2,7 +2,7 @@
 {% block title %}Admin review - {{ bank_name }}{% endblock %}
 {% block content %}
   <h1>Administrator &mdash; transfer review</h1>
-  <p>Signed in as administrator. Session cookie: <code>{{ admin_cookie }}</code></p>
+  <p>Signed in as administrator.</p>
   <table>
     <tr><th>#</th><th>Counterparty</th><th>Amount</th><th>Note</th></tr>
     {% for r in rows %}
