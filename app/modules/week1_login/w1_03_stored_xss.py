@@ -80,7 +80,12 @@ def admin_review():
     rows = fetch_all(
         "SELECT id, counterparty, amount, note FROM transactions ORDER BY id DESC LIMIT 50"
     )
-    return render_template("admin_review.html", rows=rows, admin_cookie=_admin_cookie())
+    # Show a REDACTED cookie here. The real flag-bearing cookie is only
+    # obtainable by stealing document.cookie via the stored XSS (the emulated bot
+    # delivers _admin_cookie() below) - so becoming admin via W1-01's SQLi does
+    # NOT hand you FLAG_W1-03. This keeps each task's flag isolated (brief req #5).
+    return render_template("admin_review.html", rows=rows,
+                           admin_cookie="session=admin-danubka; flag=<redacted - steal it via XSS>")
 
 
 def _admin_cookie():
