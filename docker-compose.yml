@@ -1,9 +1,23 @@
 # Danubius Bank - CTF target. NEVER deploy to a production network.
-# Clean reset:  docker compose down -v && docker compose up --build
+#
+# ONE stack, ONE command:  docker compose up -d --build
+#   - the vulnerable bank behind its access gate  -> :8080
+#   - the CTFd scoreboard (login, read, submit)   -> :80
+#
+# Player identity is single-sourced in CTFd: the gate validates every player
+# login against CTFd (see gate/app.py), so an account created once in
+# CTFd Admin works at both the scoreboard and the gate. There is NO separate
+# player list to maintain.
+#
+# Reset ONLY the vulnerable app to a clean state (keeps CTFd scores/players):
+#   docker compose rm -sfv db web && docker compose up -d
+# Full wipe INCLUDING the scoreboard (careful - deletes players & scores):
+#   docker compose down -v
 
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-danubius}
       POSTGRES_USER: ${DB_USER:-danubius}
@@ -22,9 +36,11 @@ services:
 
   web:
     build: .
+    restart: unless-stopped
     environment:
       WEEK: ${WEEK:-1}
-      SECRET_KEY: ${SECRET_KEY:-dev-danubius-not-secret}
+      # Required (no default): fails fast if .env is missing.
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME:-danubius}
@@ -55,7 +71,7 @@ services:
       FLAG_W4_03: ${FLAG_W4_03:-RPC{unset_w4_03}}
       FLAG_W4_04: ${FLAG_W4_04:-RPC{unset_w4_04}}
       FLAG_W4_05: ${FLAG_W4_05:-RPC{unset_w4_05}}
-      WEEK4_KEY: ${WEEK4_KEY:-${GATE_ADMIN_PASSWORD:-change-me-admin}}
+      WEEK4_KEY: ${WEEK4_KEY:-${GATE_ADMIN_PASSWORD}}
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
     depends_on:
@@ -70,19 +86,26 @@ services:
       - default
       - exporter_isolated
 
-  # Secure access gate + operator dashboard. The ONLY published service.
-  # Players authenticate here; every request is proxied to `web` and logged with
-  # the player's real identity. Gate + logs live OUTSIDE the vulnerable app (own
-  # SQLite DB), so nothing in the target can reach or tamper with the monitoring.
+  # Secure access gate + operator dashboard. The ONLY published app service.
+  # Players authenticate here; the gate validates their credentials against
+  # CTFd (single source of truth), then proxies every request to `web` and logs
+  # it with the player's real identity. Gate + logs live OUTSIDE the vulnerable
+  # app (own SQLite DB), so nothing in the target can reach or tamper with the
+  # monitoring. The operator dashboard uses GATE_ADMIN_* (set equal to the CTFd
+  # admin in .env for a single admin credential).
   gate:
     build: ./gate
+    restart: unless-stopped
     environment:
       UPSTREAM_URL: http://web:8080
-      GATE_SECRET: ${GATE_SECRET:-change-me-gate-secret}
-      GATE_ADMIN_USER: ${GATE_ADMIN_USER:-admin}
-      GATE_ADMIN_PASSWORD: ${GATE_ADMIN_PASSWORD:-change-me-admin}
+      CTFD_URL: ${CTFD_URL:-http://ctfd:8000}
+      GATE_SECRET: ${GATE_SECRET:?set GATE_SECRET in .env}
+      GATE_ADMIN_USER: ${GATE_ADMIN_USER:?set GATE_ADMIN_USER in .env}
+      GATE_ADMIN_PASSWORD: ${GATE_ADMIN_PASSWORD:?set GATE_ADMIN_PASSWORD in .env}
       GATE_DB: /data/gate.db
+      # Optional local break-glass accounts (dev/offline); empty by default.
       GATE_PLAYERS_FILE: /app/players.json
+      GATE_COOKIE_SECURE: ${GATE_COOKIE_SECURE:-0}
     volumes:
       - gate_data:/data
       - ./gate/players.json:/app/players.json:ro
@@ -94,6 +117,7 @@ services:
       - "0.0.0.0:8080:8000"
     depends_on:
       - web
+      - ctfd
 
   # W1-05 exporter: the ONLY container that yields a shell. Isolated on an
   # internal (no-egress) network with no route to db/ollama, cap_drop:ALL, and
@@ -101,6 +125,7 @@ services:
   # filename; the exporter itself can reach nothing else.
   exporter:
     build: ./exporter
+    restart: unless-stopped
     environment:
       FLAG_W1_05: ${FLAG_W1_05:-RPC{unset_w1_05}}
     networks:
@@ -114,16 +139,78 @@ services:
   # ollama_models volume). Not published; only web talks to it over the network.
   ollama:
     build: ./ollama
+    restart: unless-stopped
     environment:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
     volumes:
       - ollama_models:/root/.ollama
 
+  # --- CTFd scoreboard --------------------------------------------------------
+  # The login-gated platform where players read challenges and submit flags.
+  # Published on :80. Its db/redis stay on an internal network. Accounts created
+  # here are the single source of truth the gate authenticates players against.
+  ctfd:
+    image: ctfd/ctfd:3.7.5
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    environment:
+      # CTFd needs a stable SECRET_KEY across its workers (sessions). Required.
+      - SECRET_KEY=${CTFD_SECRET_KEY:?set CTFD_SECRET_KEY in .env}
+      - UPLOAD_FOLDER=/var/uploads
+      - DATABASE_URL=mysql+pymysql://ctfd:ctfd@ctfd-db/ctfd
+      - REDIS_URL=redis://ctfd-cache:6379
+      - WORKERS=2
+      - LOG_FOLDER=/var/log/CTFd
+      - ACCESS_LOG=-
+      - ERROR_LOG=-
+    volumes:
+      - ctfd-uploads:/var/uploads
+      - ctfd-logs:/var/log/CTFd
+    networks:
+      - default          # reachable by the gate for login validation
+      - ctfd_internal     # reaches its own db/redis
+    depends_on:
+      - ctfd-db
+      - ctfd-cache
+
+  ctfd-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${CTFD_DB_ROOT_PASSWORD:-ctfd-root-change-me}
+      - MYSQL_USER=ctfd
+      - MYSQL_PASSWORD=ctfd
+      - MYSQL_DATABASE=ctfd
+    volumes:
+      - ctfd-db:/var/lib/mysql
+    networks:
+      - ctfd_internal
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --wait_timeout=28800
+
+  ctfd-cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - ctfd-redis:/data
+    networks:
+      - ctfd_internal
+
 networks:
-  # `default` is auto-created for db/web (has outbound). exporter is NOT on it.
+  # `default` is auto-created (has outbound). exporter/ctfd-db/redis are NOT on it.
   exporter_isolated:
+    internal: true
+  ctfd_internal:
     internal: true
 
 volumes:
   ollama_models:
   gate_data:
+  ctfd-uploads:
+  ctfd-logs:
+  ctfd-db:
+  ctfd-redis:

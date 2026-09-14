@@ -27,8 +27,10 @@ import urllib.request
 from http.cookiejar import CookieJar
 
 BASE = os.environ.get("BASE_URL", "http://localhost:8080")
-GATE_USER = os.environ.get("GATE_USER", "tester")
-GATE_PASS = os.environ.get("GATE_PASS", "test123")
+# The gate validates against CTFd now, so tests sign in with a real CTFd account.
+# Default to the admin from the environment (.env); override with GATE_USER/PASS.
+GATE_USER = os.environ.get("GATE_USER") or os.environ.get("CTFD_ADMIN_USER", "ctfadmin")
+GATE_PASS = os.environ.get("GATE_PASS") or os.environ.get("CTFD_ADMIN_PASSWORD", "")
 FLAG_RE = re.compile(r"RPC\{[^}]*\}")
 
 _cj = CookieJar()

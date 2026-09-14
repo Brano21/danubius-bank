@@ -30,13 +30,15 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 URL = os.environ.get("CTFD_URL", "http://localhost:80").rstrip("/")
 CTF_NAME = os.environ.get("CTF_NAME", "Danubius Bank CTF")
 ADMIN_USER = os.environ.get("CTFD_ADMIN_USER", "ctfadmin")
-ADMIN_PW = os.environ.get("CTFD_ADMIN_PASSWORD", "change-me-admin")
+ADMIN_PW = os.environ.get("CTFD_ADMIN_PASSWORD", "")
 ADMIN_EMAIL = os.environ.get("CTFD_ADMIN_EMAIL", "admin@danubius.local")
 MAX_TEAM_SIZE = os.environ.get("MAX_TEAM_SIZE", "3")
 APP_TARGET = os.environ.get("APP_TARGET_URL", "http://localhost:8080").rstrip("/")
-GATE_PLAYER_USER = os.environ.get("GATE_PLAYER_USER", "tester")
-GATE_PLAYER_PW = os.environ.get("GATE_PLAYER_PW", "test123")
 POINTS = {"Easy": 100, "Medium": 200, "Hard": 300}
+
+if not ADMIN_PW:
+    sys.exit("CTFD_ADMIN_PASSWORD is required (no default). Set it in .env / the "
+             "environment before seeding.")
 
 s = requests.Session()
 
@@ -73,7 +75,10 @@ def setup():
         "challenge_visibility": "private",
         "account_visibility": "private",
         "score_visibility": "private",
-        "registration_visibility": "public",
+        # Admin-only registration: players do NOT self-register. Create their
+        # accounts in Admin -> Users (or CSV import). Those same credentials then
+        # work at the app gate, which validates against CTFd.
+        "registration_visibility": "private",
         "verify_emails": "false",
         "name": ADMIN_USER,
         "email": ADMIN_EMAIL,
@@ -112,9 +117,9 @@ def create_challenge(c, nonce, w4dir):
         return
     desc = c["description"]
     if c.get("target"):
-        desc += ("\n\n**Target:** " + APP_TARGET + "/ — sign in at the gate with `"
-                 + GATE_PLAYER_USER + "` / `" + GATE_PLAYER_PW + "`, then register a "
-                 "bank account or use the W1-01 login bypass.")
+        desc += ("\n\n**Target:** " + APP_TARGET + "/ — sign in at the gate with "
+                 "**your own CTFd username and password**, then register a bank "
+                 "account or use the W1-01 login bypass.")
     body = {"name": c["name"], "category": c["category"], "description": desc,
             "value": POINTS[c["difficulty"]], "state": "visible", "type": "standard"}
     r = api("POST", "/api/v1/challenges", nonce, json=body)

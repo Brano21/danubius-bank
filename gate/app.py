@@ -3,8 +3,11 @@
 This service sits IN FRONT of the vulnerable app and is the only published one.
 It is intentionally NOT part of the vulnerable surface:
 
-  * Players must authenticate here (accounts issued by the organizer in
-    players.json) before any request reaches the target.
+  * Players must authenticate here before any request reaches the target. Their
+    credentials are validated against CTFd (the single source of truth): an
+    account created once in CTFd Admin works at both the scoreboard and here,
+    with no separate player list to maintain. An optional local players.json is
+    supported only as a dev/offline break-glass fallback (empty by default).
   * Every proxied request is logged with the player's real identity - which
     comes from the gate session, NOT from the target's (deliberately broken)
     login. Inside the game a player can still impersonate anyone; the gate
@@ -17,6 +20,7 @@ import datetime
 import hmac
 import json
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -27,6 +31,7 @@ from flask import (
 )
 
 UPSTREAM = os.environ.get("UPSTREAM_URL", "http://web:8080")
+CTFD_URL = os.environ.get("CTFD_URL", "http://ctfd:8000").rstrip("/")
 DB_PATH = os.environ.get("GATE_DB", "/data/gate.db")
 PLAYERS_FILE = os.environ.get("GATE_PLAYERS_FILE", "/app/players.json")
 ADMIN_USER = os.environ.get("GATE_ADMIN_USER", "admin")
@@ -97,6 +102,8 @@ def verify_password(stored, given):
 
 
 def load_players():
+    """Optional LOCAL break-glass accounts (dev/offline). Empty in a real run;
+    players normally authenticate against CTFd via verify_against_ctfd()."""
     try:
         with open(PLAYERS_FILE, encoding="utf-8") as f:
             data = json.load(f)
@@ -105,6 +112,51 @@ def load_players():
         return {p["username"]: p["password"] for p in data}
     except Exception:
         return {}
+
+
+_CTFD_NONCE_RE = re.compile(r"'csrfNonce':\s*\"([0-9a-fA-F]+)\"")
+
+
+def verify_against_ctfd(username, password):
+    """Validate credentials against CTFd (the single source of truth).
+
+    Performs CTFd's own form login server-side, then confirms the session is
+    authenticated via /api/v1/users/me. Returns CTFd's canonical username on
+    success (used as the authoritative identity in the logs), else False. This
+    is why 'the same account' works at the scoreboard and at the gate: there is
+    only one account, kept in CTFd. Team membership is irrelevant here - a valid
+    account is allowed through even before it has joined a team.
+    """
+    if not username or not password:
+        return False
+    # CTFd rate-limits /login (10 per 5s) per source IP, and every validation
+    # comes from the gate's IP - so a start-of-event burst can hit 429. Retry a
+    # couple of times with a short backoff before giving up.
+    for attempt in range(3):
+        try:
+            cs = requests.Session()
+            page = cs.get(CTFD_URL + "/login", timeout=10)
+            m = _CTFD_NONCE_RE.search(page.text)
+            if not m:
+                return False
+            r = cs.post(CTFD_URL + "/login",
+                        data={"name": username, "password": password, "nonce": m.group(1)},
+                        timeout=10, allow_redirects=False)
+            if r.status_code == 429:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            me = cs.get(CTFD_URL + "/api/v1/users/me", timeout=10)
+            if me.status_code == 429:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            if me.status_code == 200:
+                body = me.json()
+                if body.get("success"):
+                    return body.get("data", {}).get("name") or username
+            return False        # authenticated request returned "not logged in" = bad creds
+        except Exception:
+            return False
+    return False
 
 
 def init_db():
@@ -164,16 +216,21 @@ def player_login():
         else:
             u = request.form.get("username", "")
             p = request.form.get("password", "")
-            players = load_players()
-            if u in players and verify_password(players[u], p):
+            # 1) optional LOCAL break-glass account, 2) CTFd (source of truth).
+            local = load_players()
+            if u in local and verify_password(local[u], p):
+                name = u
+            else:
+                name = verify_against_ctfd(u, p)
+            if name:
                 _clear_fails(ip)
                 session.clear()
                 session.permanent = True            # 7-day lifetime
-                session["player"] = u
+                session["player"] = name
                 session["seen"] = time.time()
                 return redirect(nxt or "/")
             _note_fail(ip)
-            error = "Invalid credentials."
+            error = "Invalid credentials. Use your CTFd username and password."
     return render_template("gate_login.html", error=error, next=nxt)
 
 
@@ -227,8 +284,10 @@ def admin_dashboard():
         ).fetchall()
     ]
     total = con.execute("SELECT COUNT(*) AS c FROM requests").fetchone()["c"]
+    # Player accounts live in CTFd now; the dashboard reports who has actually
+    # been SEEN through the gate (from the request log), not a static roster.
     return render_template("gate_dashboard.html", recent=recent, summary=summary,
-                           total=total, players=sorted(load_players()))
+                           total=total)
 
 
 # --- Reverse proxy (everything else) -----------------------------------------

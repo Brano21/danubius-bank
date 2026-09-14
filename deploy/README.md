@@ -1,148 +1,169 @@
-# ☁️ Deploy the Danubius Bank CTF to AWS
+# ☁️ Deploy the Danubius Bank CTF
 
-Infrastructure-as-code that stands up the **whole stack** on one EC2 instance:
+The **whole stack** is one `docker-compose.yml`, brought up (and CTFd seeded) by
+one script — `deploy/manual-setup.sh`. Two ways to run it on a server:
 
-- the **vulnerable Danubius Bank app** (behind its gate) — the target, on `:8080`;
-- the **CTFd** platform — where players sign in and submit flags, on `:80`;
-- fresh **random flags** generated at boot and wired into *both* (so CTFd matches
-  the app), plus all 19 challenges seeded with descriptions, hints and points.
-
-Play is **solo or team** (CTFd team mode, max size configurable — default 3). The
-whole thing is **network-scoped to your IP** (`allowed_cidr`); players still log in
-at CTFd and at the app gate on top of that.
+- **[Manual EC2](#option-a--manual-ec2-recommended)** — you click the instance in
+  the AWS console; the script does the software. *Recommended if Terraform feels
+  like overkill.*
+- **[Terraform](#option-b--terraform)** — cloud-init runs the exact same script.
 
 ```
-                 allowed_cidr only
-   players ───────────────────────────►  ┌─────────── EC2 (Ubuntu) ───────────┐
-     :80   CTFd  (sign in, read, submit)  │  docker compose (CTFd + db + redis)│
-     :8080 App gate (attack the target)   │  docker compose (gate+web+db+       │
-                                          │                  ollama+exporter)  │
-                                          └────────────────────────────────────┘
+                 allowed IPs only
+   players ───────────────────────────►  ┌──────────── EC2 (Ubuntu) ───────────┐
+     :80   CTFd  (sign in, read, submit)  │  ONE docker compose stack:          │
+     :8080 App gate (attack the target)   │  gate + web + db + ollama +         │
+                                          │  exporter + CTFd (+ its db/redis)   │
+                                          └─────────────────────────────────────┘
 ```
 
-## Run it locally first (no AWS)
+## One account per player (how login works)
 
-You can run the exact same two stacks on your own machine to try it end-to-end:
+There is **no separate player list**. **CTFd is the single source of truth:**
 
-```bash
-# 1) the vulnerable app (from the repo root)
-cp .env.example .env
-WEEK=4 docker compose up -d --build                        # gate → http://localhost:8080
+1. You (admin) create each player in **CTFd → Admin → Users** (self-registration
+   is off). Give them a username + password.
+2. The player uses **those same credentials** at the CTFd scoreboard **and** at the
+   app gate on `:8080` — the gate validates every login against CTFd.
+3. Inside the bank they either register (`/register`) or use the W1-01 bypass.
 
-# 2) CTFd
-docker compose -f deploy/ctfd/docker-compose.yml up -d     # CTFd → http://localhost:80
-
-# 3) set up CTFd (team mode) + seed all 19 challenges with matching flags
-pip install requests
-set -a; . .env; set +a                                     # load the FLAG_* values
-CTFD_URL=http://localhost CTF_NAME="Danubius Bank CTF" \
-CTFD_ADMIN_USER=ctfadmin CTFD_ADMIN_PASSWORD='change-me' \
-APP_TARGET_URL=http://localhost:8080 MAX_TEAM_SIZE=3 \
-python3 deploy/ctfd/seed_ctfd.py
-```
-
-Open CTFd at `http://localhost/` (register + join a team), read a challenge, attack
-the app at `http://localhost:8080/`, submit the flag. Tear down with
-`docker compose down` in both places (add `-v` to wipe data).
+The **admin** account is one credential too: `CTFD_ADMIN_*` in `.env` is the CTFd
+admin (creates users, runs the scoreboard) **and** the gate operator (monitoring at
+`:8080/_gate/admin`). Keep `GATE_ADMIN_*` equal to `CTFD_ADMIN_*`.
 
 ---
 
-## Prerequisites (AWS)
+## Run it locally first (no AWS)
 
-- **Terraform ≥ 1.3** and **AWS credentials** configured (`aws configure`, or env
-  vars / SSO). The identity needs EC2 + VPC permissions.
-- The repo must be reachable by the instance at boot (`repo_url`): public, or embed
-  a token. Default is `github.com/Brano21/danubius-bank`.
+```bash
+cp .env.example .env                 # set CTFD_ADMIN_PASSWORD (== GATE_ADMIN_PASSWORD)
+docker compose up -d --build         # gate :8080 + CTFd :80, one stack
+python -m pip install requests
+set -a; . ./.env; set +a
+CTFD_URL=http://localhost APP_TARGET_URL=http://localhost:8080 python deploy/ctfd/seed_ctfd.py
+```
 
-## Deploy
+Open CTFd at `http://localhost/`, sign in as the admin, create a test player under
+**Admin → Users**, then sign in at the app gate `http://localhost:8080/` with that
+player's credentials.
+
+---
+
+## Sizing (pick before you launch)
+
+| WEEK | What runs | Instance | Disk |
+|:----:|-----------|----------|------|
+| 4 (default) | Full lab incl. the Week-3 LLM (Ollama 3B) | **m5.2xlarge** (32 GB RAM) | 60 GB |
+| 3 | + LLM, no Week-4 forensics | m5.xlarge / m5.2xlarge (≥16 GB) | 40 GB |
+| 1–2 | Web + API only, **no LLM** | m5.large / t3.large (8 GB) | 30 GB |
+
+The LLM is the RAM hog and the ~2 GB first-boot download. For a cheap web/API run,
+set `WEEK=2` and use a small instance.
+
+---
+
+## Option A — Manual EC2 (recommended)
+
+**1. Launch the instance (AWS console):**
+- **AMI:** Ubuntu Server 22.04 LTS (or 24.04).
+- **Type / disk:** per the sizing table above (default: `m5.2xlarge`, 60 GB gp3).
+- **Key pair:** create/pick one so you can SSH.
+- **Security group — inbound (scope the source to your/players' IPs, never
+  `0.0.0.0/0`):**
+
+  | Port | Purpose | Source |
+  |:----:|---------|--------|
+  | 22 | SSH | **your** IP /32 |
+  | 80 | CTFd scoreboard | players' IPs |
+  | 8080 | App gate (target) | players' IPs |
+
+**2. Install Docker + bring the stack up (one command):**
+```bash
+ssh ubuntu@<PUBLIC_IP>
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/Brano21/danubius-bank.git
+cd danubius-bank
+sudo ADMIN_PASSWORD='pick-a-strong-admin-password' bash deploy/manual-setup.sh
+```
+`manual-setup.sh` installs Docker if missing, writes `.env` (random secrets + a
+random flag per task), runs `docker compose up -d --build`, and seeds CTFd. **First
+boot ~5–15 min** (image builds + the LLM model). Re-running it is safe (reuses
+`.env`, won't double-seed). When it finishes it prints the URLs and the admin login.
+
+Optional overrides: `WEEK=2`, `ADMIN_USER=...`, `CTF_NAME='...'`, `MAX_TEAM_SIZE=3`.
+
+**3. Create players:** open `http://<PUBLIC_IP>/`, sign in as admin, **Admin →
+Users → +** (or CSV import). Hand each player their username/password — that is
+also their app-gate login.
+
+---
+
+## Option B — Terraform
+
+Cloud-init runs `deploy/manual-setup.sh` for you.
 
 ```bash
 cd deploy/terraform
-cp terraform.tfvars.example terraform.tfvars   # then edit it (see below)
+cp terraform.tfvars.example terraform.tfvars   # edit it
 terraform init
 terraform apply
 ```
 
-Set at least these in `terraform.tfvars`:
+Set at least:
 
 | Variable | Why |
 |----------|-----|
-| `allowed_cidr` | **Your** IP as `x.x.x.x/32` — who can reach the lab. Never `0.0.0.0/0`. |
-| `ctfd_admin_password` | CTFd admin password. |
+| `allowed_cidr` | Who can reach the lab, e.g. `x.x.x.x/32`. Never `0.0.0.0/0`. |
+| `ctfd_admin_password` | The one admin password (CTFd admin + gate operator). |
 | `ssh_key_name` *(optional)* | An existing EC2 key pair, if you want SSH. |
-| `instance_type` *(optional)* | `m5.2xlarge` (32 GB) for the full lab incl. the LLM; `m5.large` + `week=2` for a cheap web/API-only lab. |
-| `week` *(optional)* | `1`–`4`. `4` = everything. |
+| `instance_type` / `week` *(optional)* | See the sizing table. |
 
-`terraform apply` prints the URLs:
+`terraform apply` prints `ctfd_url` and `app_gate_url`. Watch progress:
+`ssh ubuntu@<ip>` then `tail -f /var/log/danubius-deploy.log`. Tear down with
+`terraform destroy`.
 
-```
-ctfd_url     = http://<ip>/
-app_gate_url = http://<ip>:8080/
-```
+> ⚠️ `allowed_cidr` is a single CIDR. To let a whole class in from different IPs,
+> widen it (e.g. an office `/24`) or, for a real event, put an ALB in front. The
+> current SG opens 80/8080 to exactly this one range.
 
-**First boot takes ~5–15 min** (build images, pull the ~2 GB LLM model, set up and
-seed CTFd). Watch it: `ssh ubuntu@<ip>` then `tail -f /var/log/danubius-deploy.log`.
+---
 
-## What happens on the box
+## Everyday operations
 
-`user_data.sh.tftpl` (cloud-init):
+**Add / remove a player:** CTFd → Admin → Users. Nothing to restart — the gate
+picks it up on the player's next login (it asks CTFd every time).
 
-1. installs Docker + compose, clones the repo to `/opt/danubius-bank`;
-2. writes `.env` with **random** gate/DB secrets and a **random flag per task**;
-3. `docker compose up -d --build` — the vulnerable app (gate on `:8080`);
-4. `docker compose -f deploy/ctfd/docker-compose.yml up -d` — CTFd on `:80`;
-5. `deploy/ctfd/seed_ctfd.py` — runs the CTFd setup wizard in **team mode**, sets
-   the max team size, and creates all 19 challenges (description + hints + the
-   matching random flag), attaching the Week-4 evidence files.
+**See who's attacking the target:** the gate monitoring dashboard at
+`http://<ip>:8080/_gate/admin` (admin login) logs every proxied request with the
+player's real CTFd identity.
 
-## Players & teams — how they register and reach the target
-
-There are **two logins**, by design:
-
-**1. CTFd** (`http://<ip>/`) — the scoreboard. Players **self-register** (username +
-email + password), then **create or join a team** (CTFd runs in *team mode*; a solo
-player is just a team of one; max size = `max_team_size`, default **3**). Scoring is
-per team. This is where they read challenges and submit flags. Week-4 challenges
-have the evidence files attached — download and investigate.
-
-**2. The target app gate** (`http://<ip>:8080/`) — the vulnerable bank sits behind a
-thin access gate so only known players can touch it. Gate accounts are
-**operator-managed** (there is *no* self-registration on the gate). Two ways to run
-it for a CTF:
-
-- **Shared credential (simplest, recommended).** The app is multi-tenant
-  (Juice-Shop style — one instance, many players), so give *everyone* the same gate
-  login. The repo ships `tester` / `test123` in `gate/players.json`; the seeded
-  challenges already print it in their **Target** line, or announce it via a CTFd
-  notification.
-- **Per-team gate accounts.** Add one line per team to `gate/players.json`
-  (`"team-name": "password"`) and `docker compose restart gate` on the host.
-
-Once past the gate, players are on the real bank: they either **register a bank
-account** (`/register`) or walk in with the **W1-01** login bypass — both work, the
-flags are the same for everyone.
-
-> **Player flow:** register on CTFd → join a team → open a challenge → it points at
-> `http://<ip>:8080/` → sign in at the gate (shared credential) → solve → submit the
-> flag back in CTFd.
-
-## Cost & teardown
-
-An `m5.2xlarge` is a few $/hour of runtime — **destroy it when you're done**:
-
+**Reset only the vulnerable app** (keep CTFd scores/players):
 ```bash
-terraform destroy
+cd /opt/danubius-bank   # or wherever you cloned it
+docker compose rm -sfv db web && docker compose up -d
 ```
+
+**Re-seed CTFd by hand** (only if the automatic seed failed — it won't re-run once
+`.ctfd_seeded` exists; delete that file to force it):
+```bash
+set -a; . ./.env; set +a
+CTFD_URL=http://localhost APP_TARGET_URL=http://<ip>:8080 python3 deploy/ctfd/seed_ctfd.py
+```
+
+**Team size** is best-effort via the API; if it didn't stick, set it in CTFd
+**Admin → Config → Teams**.
+
+**After a reboot** the whole stack comes back on its own (`restart: unless-stopped`).
+
+---
 
 ## Notes / troubleshooting
 
-- **Re-seed by hand:** `ssh` in, `cd /opt/danubius-bank`, `set -a; . .env; set +a`,
-  then `CTFD_URL=http://localhost CTF_NAME=... CTFD_ADMIN_USER=... CTFD_ADMIN_PASSWORD=... APP_TARGET_URL=http://<ip>:8080 python3 deploy/ctfd/seed_ctfd.py`.
-- **Team size** is best-effort via the API; if it didn't stick, set it in CTFd
-  **Admin → Config → Teams**.
 - **HTTPS:** this lab is HTTP-only. For a real event put an ALB/CloudFront or a
-  reverse proxy with a certificate in front, and set `GATE_COOKIE_SECURE=1`.
-- **CTFd version** is pinned in `deploy/ctfd/docker-compose.yml`; bump it there if
-  needed.
-- This is a **deliberately vulnerable** lab. Keep `allowed_cidr` tight, use a
+  reverse proxy with a certificate in front, and set `GATE_COOKIE_SECURE=1` in `.env`.
+- **CTFd version** is pinned in the root `docker-compose.yml` (`ctfd/ctfd:3.7.5`).
+- **`.env` has no defaults for the required secrets** (`SECRET_KEY`, `GATE_SECRET`,
+  `GATE_ADMIN_PASSWORD`, `CTFD_SECRET_KEY`): `docker compose up` fails fast if it's
+  missing. The setup script generates them for you.
+- This is a **deliberately vulnerable** lab. Keep the security group tight, use a
   throwaway/isolated AWS account, and destroy it after the event.

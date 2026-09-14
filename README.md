@@ -33,24 +33,34 @@ reference fixes for every vuln, and a regression suite. Weeks unlock via `WEEK`.
 Prerequisites: **Docker Desktop** running, ~16 GB RAM (for the Week-3 LLM).
 
 ```bash
-cp .env.example .env                  # adjust flags / passwords for your run
-WEEK=4 docker compose up --build      # full lab (W1–W4); gate on http://localhost:8080
+cp .env.example .env                  # set CTFD_ADMIN_PASSWORD (== GATE_ADMIN_PASSWORD) & secrets
+docker compose up -d --build          # ONE stack: gate :8080 + CTFd scoreboard :80
+
+# then set up CTFd (team mode, admin-only registration) + seed all 19 challenges:
+python -m pip install requests
+set -a; . ./.env; set +a
+CTFD_URL=http://localhost APP_TARGET_URL=http://localhost:8080 python deploy/ctfd/seed_ctfd.py
 ```
 
-The app runs **behind an access gate** at `http://localhost:8080`.
+Two front doors, **one account each player uses for both**:
 
-| Where | User | Password |
-|-------|------|----------|
-| **Gate — player entrance** | `tester` | `test123` |
-| | `hrac1` / `hrac2` | `danubius1` / `danubius2` |
-| **Operator dashboard** (`/_gate/admin`) | `admin` | `change-me-admin` |
+| Where | Who | Credentials |
+|-------|-----|-------------|
+| **CTFd scoreboard** (`:80`) | admin creates player accounts | `CTFD_ADMIN_*` from `.env` |
+| **App gate — player entrance** (`:8080`) | players | **their CTFd username + password** |
+| **Operator dashboard** (`:8080/_gate/admin`) | you | `GATE_ADMIN_*` (keep == `CTFD_ADMIN_*`) |
+
+Player accounts live **only in CTFd** (single source of truth); the gate
+validates every login against CTFd, so there is no separate player list. Create
+players in **CTFd → Admin → Users**; those same credentials open the app gate.
 
 **Into the bank itself:** a player either **registers** (`/register`) or uses the
 **W1-01** login bypass (`' OR '1'='1'-- `, any password).
 
-> ⚠️ **Before any shared run, change every secret:** `GATE_ADMIN_PASSWORD`,
-> `GATE_SECRET`, `SECRET_KEY`, the accounts in `gate/players.json`, and the DB
-> password. `.env` is git-ignored — keep real flags out of git.
+> ⚠️ **Before any shared run, change every secret in `.env`:** `CTFD_ADMIN_PASSWORD`
+> (= `GATE_ADMIN_PASSWORD`), `GATE_SECRET`, `SECRET_KEY`, `CTFD_SECRET_KEY`, and the
+> DB password. `.env` is git-ignored — keep real flags out of git. The required
+> secrets have **no defaults**: `docker compose up` fails fast if `.env` is missing.
 
 ---
 
@@ -149,11 +159,13 @@ stay PASS.
 
 ## ♻️ Reset to a clean vulnerable state
 
+Reset **only the vulnerable bank** (keeps CTFd scores & players):
 ```bash
-docker compose down -v && docker compose up --build
+docker compose rm -sfv db web && docker compose up -d
 ```
-`-v` wipes the DB volume so `seed/seed.sql` re-runs. (It also wipes the Ollama
-model volume, so the model re-downloads on next start.)
+This drops the app's Postgres volume so `seed/seed.sql` re-runs, without touching
+the scoreboard. A **full** wipe (⚠️ also deletes CTFd players & scores, and the
+Ollama model) is `docker compose down -v`.
 
 ---
 
@@ -161,7 +173,7 @@ model volume, so the model re-downloads on next start.)
 
 ```
 danubius-bank/
-├── docker-compose.yml        # gate + web + db + ollama + exporter
+├── docker-compose.yml        # ONE stack: gate + web + db + ollama + exporter + CTFd
 ├── .env.example              # WEEK, DB creds, FLAG_* variables, gate settings
 ├── Dockerfile · wsgi.py · requirements.txt
 ├── app/
@@ -185,17 +197,22 @@ danubius-bank/
 
 ## ☁️ Deploy to the cloud
 
-[`deploy/`](deploy/) has Terraform + cloud-init that stands up the **whole stack**
-on AWS — the vulnerable app **and** the CTFd platform — with fresh random flags
-wired into both and all 19 challenges seeded. See **[`deploy/README.md`](deploy/README.md)**.
+Two ways to stand up the **whole stack** on AWS (vulnerable app + CTFd, random
+flags wired into both, all 19 challenges seeded):
 
-**Players & teams (two logins, by design):**
-1. **CTFd** (`:80`) — the scoreboard. Players **self-register** and **create/join a
-   team** (team mode, max 3; solo = a team of one), then read challenges and submit
-   flags.
-2. **App gate** (`:8080`) — a thin, operator-managed door in front of the target
-   (no self-registration). Give everyone one **shared** gate credential (Juice-Shop
-   style — `tester`/`test123` ships in `gate/players.json`), or add per-team
-   accounts. Inside the bank they **register** (`/register`) or use the W1-01 bypass.
+- **Manual (recommended if you don't know Terraform):** click an Ubuntu EC2 in the
+  console, open ports 22/80/8080, SSH in, `git clone`, then
+  `sudo ADMIN_PASSWORD='...' bash deploy/manual-setup.sh`. That's it.
+- **Terraform:** `cd deploy/terraform && terraform apply` — cloud-init runs the
+  same bootstrap script for you.
 
-Full flow and troubleshooting: [`deploy/README.md`](deploy/README.md).
+**Players & teams (two front doors, one account):**
+1. **CTFd** (`:80`) — the scoreboard. **Admin creates** player accounts
+   (self-registration is OFF); players then **create/join a team** (team mode, max 3;
+   solo = a team of one), read challenges and submit flags.
+2. **App gate** (`:8080`) — the operator-managed door to the target. Players sign in
+   with **the same CTFd username + password** (the gate validates against CTFd — no
+   separate account). Inside the bank they **register** (`/register`) or use the
+   W1-01 bypass.
+
+Full flow, sizing and troubleshooting: [`deploy/README.md`](deploy/README.md).

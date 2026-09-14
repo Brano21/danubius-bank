@@ -16,11 +16,15 @@
 
 ## Access (for solving)
 
-`http://localhost:8080` is the **gate**; sign in as a player (demo `tester` /
-`test123`), then enter the bank via **register** or the **W1-01** login bypass.
-For curl, grab the gate cookie first:
+`http://localhost:8080` is the **gate**; sign in with **your CTFd username and
+password** (the gate validates against CTFd), then enter the bank via **register**
+or the **W1-01** login bypass. For curl, set your creds once and grab the gate
+cookie:
 ```bash
-curl -s -c ck.txt -o /dev/null -X POST -d "username=tester" -d "password=test123" http://localhost:8080/_gate/login
+CTFD_USER='your-ctfd-name'; CTFD_PASS='your-ctfd-password'
+curl -s -c ck.txt -o /dev/null -X POST \
+     --data-urlencode "username=$CTFD_USER" --data-urlencode "password=$CTFD_PASS" \
+     http://localhost:8080/_gate/login
 ```
 
 ---

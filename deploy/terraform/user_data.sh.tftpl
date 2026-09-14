@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Cloud-init for the Danubius Bank CTF host. Brings up the vulnerable app AND the
-# CTFd platform, generates fresh random flags/secrets, and seeds the challenges.
+# Cloud-init for the Danubius Bank CTF host. Installs prereqs, clones the repo,
+# then hands off to deploy/manual-setup.sh which brings up the WHOLE stack (the
+# vulnerable app on :8080 + CTFd on :80 from the single docker-compose.yml) and
+# seeds CTFd. Same script a human runs manually - one code path, no drift.
 set -euxo pipefail
 exec > >(tee -a /var/log/danubius-deploy.log) 2>&1
 echo "== danubius deploy start: $(date -u) =="
@@ -13,60 +15,19 @@ apt-get install -y git curl ca-certificates openssl python3 python3-pip jq
 curl -fsSL https://get.docker.com | sh
 usermod -aG docker ubuntu || true
 systemctl enable --now docker
-pip3 install --quiet requests
+pip3 install --quiet requests || apt-get install -y python3-requests || true
 
 # --- Clone the repo ---
 APP_DIR=/opt/danubius-bank
 git clone --branch "${repo_ref}" "${repo_url}" "$APP_DIR"
 cd "$APP_DIR"
 
-# --- Generate fresh secrets + a random flag per task (shared app <-> CTFd) ---
-PUBLIC_IP=$(curl -fsSL http://169.254.169.254/latest/meta-data/public-ipv4 || echo localhost)
-GATE_ADMIN_PW=$(openssl rand -hex 12)
-
-cat > .env <<EOF
-WEEK=${week}
-SECRET_KEY=$(openssl rand -hex 16)
-DB_NAME=danubius
-DB_USER=danubius
-DB_PASSWORD=$(openssl rand -hex 16)
-OLLAMA_MODEL=llama3.2:3b
-GATE_SECRET=$(openssl rand -hex 16)
-GATE_ADMIN_USER=operator
-GATE_ADMIN_PASSWORD=$GATE_ADMIN_PW
-GATE_COOKIE_SECURE=0
-WEEK4_KEY=$(openssl rand -hex 12)
-EOF
-
-for id in W1_01 W1_02 W1_03 W1_04 W1_05 \
-          W2_01 W2_02 W2_03 W2_04 W2_05 \
-          W3_01 W3_02 W3_03 W3_04 \
-          W4_01 W4_02 W4_03 W4_04 W4_05; do
-  echo "FLAG_$id=RPC{$(openssl rand -hex 8)}" >> .env
-done
-chmod 600 .env
-
-# --- Bring up the vulnerable app (gate on :8080) ---
-docker compose up -d --build
-
-# --- Bring up CTFd (platform on :80) ---
-export CTFD_SECRET_KEY=$(openssl rand -hex 16)
-docker compose -f deploy/ctfd/docker-compose.yml up -d
-
-# --- Wait for CTFd, then set it up + seed the challenges ---
-for i in $(seq 1 60); do
-  curl -fsS http://localhost:80/ >/dev/null 2>&1 && break || sleep 5
-done
-
-set -a; . "$APP_DIR/.env"; set +a
-CTFD_URL="http://localhost:80" \
+# --- Bring up + seed everything via the shared bootstrap script ---
+ADMIN_USER="${ctfd_admin_user}" \
+ADMIN_PASSWORD="${ctfd_admin_password}" \
+WEEK="${week}" \
 CTF_NAME="${ctf_name}" \
-CTFD_ADMIN_USER="${ctfd_admin_user}" \
-CTFD_ADMIN_PASSWORD="${ctfd_admin_password}" \
 MAX_TEAM_SIZE="${max_team_size}" \
-APP_TARGET_URL="http://$PUBLIC_IP:8080" \
-python3 deploy/ctfd/seed_ctfd.py || echo "WARN: CTFd seeding failed - see log; you can re-run seed_ctfd.py by hand."
+bash deploy/manual-setup.sh
 
 echo "== danubius deploy done: $(date -u) =="
-echo "CTFd:     http://$PUBLIC_IP/"
-echo "App gate: http://$PUBLIC_IP:8080/  (operator/$GATE_ADMIN_PW)"

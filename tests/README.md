@@ -24,7 +24,10 @@ No dependencies — pure Python 3 standard library.
 
 ## Configuration (env vars)
 - `BASE_URL` (default `http://localhost:8080`)
-- `GATE_USER` / `GATE_PASS` (default `tester` / `test123` from `gate/players.json`)
+- `GATE_USER` / `GATE_PASS` — a **valid CTFd account** (the gate validates logins
+  against CTFd). Defaults to `CTFD_ADMIN_USER` / `CTFD_ADMIN_PASSWORD` from the
+  environment, so `set -a; . ./.env; set +a` before running is enough. CTFd must
+  be up and seeded (the admin account exists) for the gate login to succeed.
 
 ## Use during fixing
 After applying a fix from `fixes/patches/<id>.patch`, the matching test should
