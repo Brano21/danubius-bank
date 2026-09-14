@@ -35,6 +35,10 @@ ADMIN_EMAIL = os.environ.get("CTFD_ADMIN_EMAIL", "admin@danubius.local")
 MAX_TEAM_SIZE = os.environ.get("MAX_TEAM_SIZE", "3")
 APP_TARGET = os.environ.get("APP_TARGET_URL", "http://localhost:8080").rstrip("/")
 POINTS = {"Easy": 100, "Medium": 200, "Hard": 300}
+# Each unlocked hint costs this % of the challenge's value, deducted from the
+# team's score by CTFd (CTF-standard). 20% -> Easy 20 / Medium 40 / Hard 60 per
+# hint. Override with HINT_COST_PCT; 0 makes hints free.
+HINT_COST_PCT = int(os.environ.get("HINT_COST_PCT", "20"))
 
 if not ADMIN_PW:
     sys.exit("CTFD_ADMIN_PASSWORD is required (no default). Set it in .env / the "
@@ -169,8 +173,10 @@ def create_challenge(c, nonce, w4dir, existing):
         desc += ("\n\n**Target:** " + APP_TARGET + "/ — sign in at the gate with "
                  "**your own CTFd username and password**, then register a bank "
                  "account or use the W1-01 login bypass.")
+    value = POINTS[c["difficulty"]]
+    hint_cost = round(value * HINT_COST_PCT / 100)
     body = {"name": c["name"], "category": c["category"], "description": desc,
-            "value": POINTS[c["difficulty"]], "state": "visible", "type": "standard"}
+            "value": value, "state": "visible", "type": "standard"}
     r = api("POST", "/api/v1/challenges", nonce, json=body)
     if r.status_code != 200:
         print("  FAIL %s create (%s): %s" % (c["key"], r.status_code, r.text[:120]))
@@ -178,7 +184,8 @@ def create_challenge(c, nonce, w4dir, existing):
     cid = r.json()["data"]["id"]
     api("POST", "/api/v1/flags", nonce, json={"challenge_id": cid, "content": flag, "type": "static"})
     for hint in c.get("hints", []):
-        api("POST", "/api/v1/hints", nonce, json={"challenge_id": cid, "content": hint, "cost": 0})
+        api("POST", "/api/v1/hints", nonce,
+            json={"challenge_id": cid, "content": hint, "cost": hint_cost})
     nfiles = 0
     if w4dir:
         for fn in c.get("files", []):
@@ -193,8 +200,8 @@ def create_challenge(c, nonce, w4dir, existing):
                     nfiles += 1
                 else:
                     print("    file %s upload failed (%s)" % (fn, r.status_code))
-    print("  OK   %s  (%d pts, %d hints, %d files)" %
-          (c["key"], POINTS[c["difficulty"]], len(c.get("hints", [])), nfiles))
+    print("  OK   %s  (%d pts, %d hints @ -%d, %d files)" %
+          (c["key"], value, len(c.get("hints", [])), hint_cost, nfiles))
 
 
 def main():
