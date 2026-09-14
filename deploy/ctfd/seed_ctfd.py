@@ -44,9 +44,33 @@ s = requests.Session()
 
 
 def nonce_from(html):
-    m = re.search(r"'csrfNonce':\s*\"([0-9a-fA-F]+)\"", html) or \
+    m = re.search(r"['\"]csrfNonce['\"]:\s*\"([0-9a-fA-F]+)\"", html) or \
         re.search(r'name="nonce"[^>]*value="([0-9a-fA-F]+)"', html)
     return m.group(1) if m else None
+
+
+def authed():
+    """True if the current session is logged in (admin)."""
+    try:
+        r = s.get(URL + "/api/v1/users/me", timeout=30)
+        return r.status_code == 200 and r.json().get("success")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def login():
+    """Log in as the admin via CTFd's form login. Works whether we just ran the
+    wizard or CTFd was already set up (or set up by hand). Returns True/False."""
+    if authed():
+        return True
+    page = s.get(URL + "/login", timeout=30)
+    nonce = nonce_from(page.text)
+    if not nonce:
+        return False
+    s.post(URL + "/login",
+           data={"name": ADMIN_USER, "password": ADMIN_PW, "nonce": nonce},
+           timeout=30, allow_redirects=False)
+    return authed()
 
 
 def get_nonce(path="/"):
@@ -59,15 +83,24 @@ def api(method, path, nonce, **kw):
     return s.request(method, URL + path, headers=h, timeout=60, **kw)
 
 
-def setup():
+def setup_done():
+    """True if CTFd's first-boot setup has already been completed. When it has,
+    GET /setup 302-redirects away; when it hasn't, it serves the wizard (200)."""
     r = s.get(URL + "/setup", timeout=30, allow_redirects=False)
-    if r.status_code in (301, 302) and "setup" not in r.headers.get("Location", ""):
-        print("CTFd already set up - skipping wizard.")
+    if r.status_code in (301, 302):
+        return True, ""
+    return False, r.text
+
+
+def setup():
+    done, html = setup_done()
+    if done:
+        print("CTFd already set up - will log in as admin.")
         return True
-    nonce = nonce_from(r.text)
+    nonce = nonce_from(html)
     if not nonce:
-        print("Could not read setup nonce (already set up?).")
-        return True
+        print("FAILED: CTFd is not set up but no setup nonce was found on /setup.")
+        return False
     data = {
         "ctf_name": CTF_NAME,
         "ctf_description": "Danubius Bank - intentionally vulnerable banking CTF.",
@@ -85,10 +118,12 @@ def setup():
         "password": ADMIN_PW,
         "nonce": nonce,
     }
-    r = s.post(URL + "/setup", data=data, timeout=60)
-    ok = r.status_code in (200, 302)
-    print("Setup:", "ok" if ok else "FAILED (%s)" % r.status_code)
-    return ok
+    s.post(URL + "/setup", data=data, timeout=60, allow_redirects=False)
+    # Trust the RESULT, not the POST status: a 200 often means the wizard form was
+    # re-rendered with a validation error and setup did NOT complete.
+    done, _ = setup_done()
+    print("Setup:", "ok" if done else "FAILED (CTFd still reports not configured)")
+    return done
 
 
 def set_team_size(nonce):
@@ -110,7 +145,21 @@ def gen_w4_bundle():
         return None
 
 
-def create_challenge(c, nonce, w4dir):
+def existing_challenge_names(nonce):
+    """Names of challenges already in CTFd, so re-running doesn't duplicate them."""
+    try:
+        r = api("GET", "/api/v1/challenges?view=admin", nonce)
+        if r.status_code == 200:
+            return {c.get("name") for c in r.json().get("data", [])}
+    except Exception:  # noqa: BLE001
+        pass
+    return set()
+
+
+def create_challenge(c, nonce, w4dir, existing):
+    if c["name"] in existing:
+        print("  SKIP %s: already exists" % c["key"])
+        return
     flag = os.environ.get(c["flag_env"])
     if not flag:
         print("  SKIP %s: %s not in env" % (c["key"], c["flag_env"]))
@@ -159,17 +208,20 @@ def main():
 
     if not setup():
         print("Setup failed - aborting."); sys.exit(1)
+    if not login():
+        print("Could not log in as admin (%s) - aborting." % ADMIN_USER); sys.exit(1)
     nonce = get_nonce("/admin") or get_nonce("/")
     if not nonce:
         print("No CSRF nonce after login - aborting."); sys.exit(1)
 
     set_team_size(nonce)
     w4dir = gen_w4_bundle()
+    existing = existing_challenge_names(nonce)
     challenges = json.load(open(os.path.join(HERE, "challenges.json"), encoding="utf-8"))
     print("Seeding %d challenges:" % len(challenges))
     for c in challenges:
         try:
-            create_challenge(c, nonce, w4dir)
+            create_challenge(c, nonce, w4dir, existing)
         except Exception as e:  # noqa: BLE001
             print("  ERROR %s: %s" % (c["key"], e))
     print("Done. CTFd:", URL, "| target:", APP_TARGET)

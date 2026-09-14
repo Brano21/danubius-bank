@@ -33,16 +33,17 @@ MAX_TEAM_SIZE="${MAX_TEAM_SIZE:-3}"
 
 log() { echo "== $* =="; }
 
-# --- 0) admin password is required (honours 'no silent default') -------------
-if [ -z "${ADMIN_PASSWORD:-}" ]; then
-  if [ -t 0 ]; then
+# --- 0) admin password is required ONLY when generating a fresh .env ---------
+# On a re-run (.env already exists) we reuse it, so the password isn't needed.
+if [ ! -f .env ]; then
+  if [ -z "${ADMIN_PASSWORD:-}" ] && [ -t 0 ]; then
     read -r -s -p "Admin password (CTFd admin + gate operator): " ADMIN_PASSWORD; echo
   fi
-fi
-if [ -z "${ADMIN_PASSWORD:-}" ]; then
-  echo "ERROR: ADMIN_PASSWORD is required. Re-run with:" >&2
-  echo "  sudo ADMIN_PASSWORD='...' bash deploy/manual-setup.sh" >&2
-  exit 1
+  if [ -z "${ADMIN_PASSWORD:-}" ]; then
+    echo "ERROR: ADMIN_PASSWORD is required on first run. Re-run with:" >&2
+    echo "  sudo ADMIN_PASSWORD='...' bash deploy/manual-setup.sh" >&2
+    exit 1
+  fi
 fi
 
 # --- 1) Docker + compose plugin ----------------------------------------------
@@ -59,8 +60,14 @@ fi
 
 # --- 2) python3 + requests (for the CTFd seeder) -----------------------------
 command -v python3 >/dev/null 2>&1 || { apt-get update -y && apt-get install -y python3; }
-python3 -c 'import requests' 2>/dev/null || pip3 install --quiet requests 2>/dev/null \
-  || { apt-get update -y && apt-get install -y python3-requests; }
+# Prefer the distro package (works on Ubuntu 24.04 where pip3 is blocked by
+# PEP 668); fall back to pip with the override, then plain pip.
+python3 -c 'import requests' 2>/dev/null || {
+  { apt-get update -y && apt-get install -y python3-requests; } \
+    || pip3 install --quiet --break-system-packages requests 2>/dev/null \
+    || pip3 install --quiet requests
+}
+python3 -c 'import requests' 2>/dev/null || { echo "ERROR: could not install python3 'requests'." >&2; exit 1; }
 
 # --- 3) public IP (only used to print the URL in challenge text) -------------
 PUBLIC_IP="${PUBLIC_IP:-$(curl -fsS --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null \
@@ -116,7 +123,16 @@ if [ -f .ctfd_seeded ]; then
   log "CTFd already seeded (.ctfd_seeded present) - skipping seed"
 else
   log "seeding CTFd (team mode, admin-only registration, 19 challenges)"
-  set -a; . ./.env; set +a
+  # Load .env WITHOUT executing it: a plain `. ./.env` treats a value with
+  # spaces (e.g. CTF_NAME=Danubius Bank CTF) as a command and, under `set -e`,
+  # aborts the whole script before seeding. This line-by-line loader is safe for
+  # spaces and $ / special characters (values are never re-expanded).
+  set -a
+  while IFS='=' read -r _k _v || [ -n "$_k" ]; do
+    case "$_k" in ''|\#*) continue ;; esac
+    export "$_k=$_v"
+  done < .env
+  set +a
   if CTFD_URL="http://localhost:80" \
      APP_TARGET_URL="http://$PUBLIC_IP:8080" \
      python3 deploy/ctfd/seed_ctfd.py; then
